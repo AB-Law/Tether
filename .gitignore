@@ -1,0 +1,26 @@
+Project.md
+.cursor/
+docs/
+.venv/
+.env
+.ruff_cache/
+*.pyc
+.sonar
+
+# SonarScanner artifacts
+.sonar_lock
+report-task.txt
+.scannerwork/
+sonar-scanner-report.json
+
+# Python test/cache artifacts
+.pytest_cache/
+__pycache__/
+*.pyo
+*.pyd
+.coverage
+coverage.xml
+htmlcov/
+
+# Type checking caches (if used)
+.mypy_cache/
