@@ -35,3 +35,9 @@ class Person(Base):
     )
 
     moments = relationship("Moment", back_populates="person", lazy="selectin")
+    journal_entries = relationship(
+        "JournalEntry",
+        secondary="journal_entry_people",
+        back_populates="people",
+        lazy="selectin",
+    )

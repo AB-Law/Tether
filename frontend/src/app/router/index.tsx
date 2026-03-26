@@ -1,6 +1,9 @@
 import { Navigate, createBrowserRouter } from 'react-router-dom'
 
 import { AuthGuard } from '../../features/auth/components/AuthGuard'
+import { JournalEditorPage } from '../../features/journal/routes/JournalEditorPage'
+import { JournalEntryPage } from '../../features/journal/routes/JournalEntryPage'
+import { JournalListPage } from '../../features/journal/routes/JournalListPage'
 import { LoginPage } from '../../features/auth/routes/LoginPage'
 import { PersonDetailPage } from '../../features/people/routes/PersonDetailPage'
 import { PersonFormPage } from '../../features/people/routes/PersonFormPage'
@@ -22,12 +25,15 @@ export const router = createBrowserRouter([
       </AuthGuard>
     ),
     children: [
-      { index: true, element: <Navigate to="/people" replace /> },
+      { index: true, element: <Navigate to="/journal" replace /> },
       { path: 'people', element: <PeopleListPage /> },
       { path: 'people/new', element: <PersonFormPage /> },
       { path: 'people/:personId', element: <PersonDetailPage /> },
       { path: 'people/:personId/edit', element: <PersonFormPage /> },
-      { path: 'journal', element: <RoutePlaceholder label="Journal" /> },
+      { path: 'journal', element: <JournalListPage /> },
+      { path: 'journal/new', element: <JournalEditorPage /> },
+      { path: 'journal/:entryId', element: <JournalEntryPage /> },
+      { path: 'journal/:entryId/edit', element: <JournalEditorPage /> },
       { path: 'almanac', element: <RoutePlaceholder label="Almanac" /> },
       { path: 'reminders', element: <RoutePlaceholder label="Reminders" /> },
     ],

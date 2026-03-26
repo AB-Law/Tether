@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user, get_db
 from app.models.user import User
+from app.schemas.journal import JournalEntryResponse
 from app.schemas.people import PersonCreate, PersonListResponse, PersonResponse, PersonUpdate
 from app.services import people_service
 
@@ -99,5 +100,5 @@ async def get_person_timeline(
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> dict[str, list]:
-    await people_service.get_person(person_id, current_user.id, db)
-    return {"data": []}
+    timeline = await people_service.get_timeline(person_id, current_user.id, db)
+    return {"data": [JournalEntryResponse.model_validate(entry) for entry in timeline]}

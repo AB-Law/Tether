@@ -63,3 +63,8 @@ async def get_drifting_away(user_id: UUID, db: AsyncSession):
 
 async def get_new_people(user_id: UUID, db: AsyncSession):
     return await person_repository.new_people(user_id=user_id, db=db)
+
+
+async def get_timeline(person_id: UUID, user_id: UUID, db: AsyncSession):
+    await get_person(person_id, user_id, db)
+    return await person_repository.get_timeline(person_id, user_id, db)

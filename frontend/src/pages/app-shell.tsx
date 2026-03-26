@@ -3,20 +3,20 @@ import { NavLink, Outlet } from 'react-router-dom'
 import { tokenStore } from '../lib/api-client'
 
 const navLinks = [
-  { to: '/people', label: 'People' },
   { to: '/journal', label: 'Journal' },
+  { to: '/people', label: 'People' },
   { to: '/almanac', label: 'Almanac' },
   { to: '/reminders', label: 'Reminders' },
 ]
 
 export function AppShell() {
   return (
-    <main className="min-h-screen bg-slate-100 text-slate-900">
+    <main className="min-h-screen bg-slate-50 text-slate-900">
       <div className="flex min-h-screen">
         <aside className="hidden w-64 border-r border-slate-200 bg-white lg:flex lg:flex-col">
           <div className="border-b border-slate-100 px-6 py-6">
-            <h1 className="text-2xl font-semibold tracking-tight text-blue-700">Tether</h1>
-            <p className="text-xs text-slate-500">Relationship Tracking</p>
+            <h1 className="text-2xl font-black tracking-tight text-blue-600">Tether</h1>
+            <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-slate-400">Relationship Tracking</p>
           </div>
           <nav className="space-y-1 px-3 py-4">
             {navLinks.map((link) => (
@@ -24,8 +24,8 @@ export function AppShell() {
                 key={link.to}
                 className={({ isActive }) =>
                   isActive
-                    ? 'flex rounded-lg bg-blue-50 px-3 py-2 text-sm font-medium text-blue-700'
-                    : 'flex rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                    ? 'flex rounded-lg bg-blue-50 px-3 py-2.5 text-sm font-semibold text-blue-700'
+                    : 'flex rounded-lg px-3 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900'
                 }
                 to={link.to}
               >
@@ -35,7 +35,7 @@ export function AppShell() {
           </nav>
           <div className="mt-auto border-t border-slate-100 px-4 py-4">
             <button
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
               onClick={() => {
                 tokenStore.set(null)
                 globalThis.location.assign('/login')
@@ -48,16 +48,38 @@ export function AppShell() {
         </aside>
 
         <div className="flex min-h-screen flex-1 flex-col">
-          <header className="border-b border-slate-200 bg-white px-5 py-4">
-            <div className="flex items-center justify-between">
-              <p className="text-sm text-slate-500">Back to People</p>
-              <div className="flex items-center gap-3 text-slate-500">
-                <span className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-200">?</span>
-                <span className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-200">⚙</span>
+          <header className="border-b border-slate-200 bg-slate-50 px-6 py-3.5">
+            <div className="flex items-center justify-between gap-4">
+              <div className="relative w-full max-w-md">
+                <input
+                  className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+                  placeholder="Search entries, people, or tags..."
+                  type="text"
+                />
+              </div>
+              <div className="flex items-center gap-2 text-slate-500">
+                <button
+                  aria-label="Notifications"
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 transition hover:border-slate-300 hover:text-slate-700"
+                  type="button"
+                >
+                  <svg aria-hidden="true" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
+                    <path d="M15 17h5l-1.4-1.4A2 2 0 0 1 18 14.2V11a6 6 0 1 0-12 0v3.2a2 2 0 0 1-.6 1.4L4 17h5m6 0a3 3 0 0 1-6 0" />
+                  </svg>
+                </button>
+                <button
+                  aria-label="Settings"
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 transition hover:border-slate-300 hover:text-slate-700"
+                  type="button"
+                >
+                  <svg aria-hidden="true" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
+                    <path d="M10.3 3.7h3.4l.5 2.1a6.9 6.9 0 0 1 1.5.9l2-.8 1.7 2.9-1.6 1.3a7.5 7.5 0 0 1 0 1.8l1.6 1.3-1.7 2.9-2-.8a6.9 6.9 0 0 1-1.5.9l-.5 2.1h-3.4l-.5-2.1a6.9 6.9 0 0 1-1.5-.9l-2 .8-1.7-2.9 1.6-1.3a7.5 7.5 0 0 1 0-1.8L4.9 8.8 6.6 6l2 .8a6.9 6.9 0 0 1 1.5-.9l.2-2.2ZM12 15.2a3.2 3.2 0 1 0 0-6.4 3.2 3.2 0 0 0 0 6.4Z" />
+                  </svg>
+                </button>
               </div>
             </div>
           </header>
-          <section className="px-5 py-6">
+          <section className="px-6 py-6">
             <Outlet />
           </section>
         </div>
