@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react'
 import type { Person } from '../../people/types'
 
+type SelectedPerson = Pick<Person, 'id' | 'name' | 'relationship_type' | 'location'>
+
 interface MentionToken {
   start: number
   end: number
@@ -21,8 +23,8 @@ interface PeopleMentionInputProps {
   value: string
   onChange: (value: string) => void
   peopleOptions: Person[]
-  selectedPeople: Person[]
-  onSelectedPeopleChange: (people: Person[]) => void
+  selectedPeople: SelectedPerson[]
+  onSelectedPeopleChange: (people: SelectedPerson[]) => void
 }
 
 export function PeopleMentionInput({

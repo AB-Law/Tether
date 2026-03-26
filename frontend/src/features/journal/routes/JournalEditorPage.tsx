@@ -8,6 +8,7 @@ import { DailyPromptBanner } from '../components/DailyPromptBanner'
 import { MoodSelector } from '../components/MoodSelector'
 import { PeopleMentionInput } from '../components/PeopleMentionInput'
 import { useCreateEntry, useJournalEntry, useTags, useUpdateEntry } from '../hooks/useJournal'
+import type { PersonSummary } from '../types'
 
 export function JournalEditorPage() {
   const { entryId } = useParams()
@@ -24,7 +25,7 @@ export function JournalEditorPage() {
   const [body, setBody] = useState('')
   const [mood, setMood] = useState<number | null>(null)
   const [tagNames, setTagNames] = useState<string[]>([])
-  const [selectedPeople, setSelectedPeople] = useState<Array<{ id: string; name: string; relationship_type: string; location: string | null }>>([])
+  const [selectedPeople, setSelectedPeople] = useState<PersonSummary[]>([])
 
   const peopleOptions = peopleQuery.data?.data ?? []
   const tagOptions = useMemo(() => tagsQuery.data?.map((tag) => tag.name) ?? [], [tagsQuery.data])
@@ -35,7 +36,7 @@ export function JournalEditorPage() {
   const hydratedDate = entryDate || entry?.entry_date || new Date().toISOString().slice(0, 10)
   const hydratedMood = mood ?? entry?.mood ?? null
   const hydratedTags = tagNames.length > 0 ? tagNames : (entry?.tags.map((tag) => tag.name) ?? [])
-  const hydratedPeople = selectedPeople.length > 0 ? selectedPeople : (entry?.people as typeof selectedPeople | undefined) ?? []
+  const hydratedPeople = selectedPeople.length > 0 ? selectedPeople : (entry?.people ?? [])
 
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">

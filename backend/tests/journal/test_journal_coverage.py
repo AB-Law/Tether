@@ -9,7 +9,13 @@ from app.api.v1.endpoints import journal, tags
 from app.core.exceptions import AppException
 from app.domain.ai import prompt_builders
 from app.repositories import journal_repository, person_repository, tag_repository
-from app.services import daily_prompt_service, journal_ai_service, journal_service, people_service, tag_service
+from app.services import (
+    daily_prompt_service,
+    journal_ai_service,
+    journal_service,
+    people_service,
+    tag_service,
+)
 from tests.helpers import ExecuteResult, FakeSession
 
 
@@ -44,7 +50,9 @@ async def test_journal_and_tags_endpoints(monkeypatch):
     listed = await journal.list_entries(user, db)
     assert listed.meta.total == 1
 
-    payload = SimpleNamespace(model_dump=lambda **_kwargs: {"entry_date": date.today(), "body": "x"})
+    payload = SimpleNamespace(
+        model_dump=lambda **_kwargs: {"entry_date": date.today(), "body": "x"}
+    )
     monkeypatch.setattr(journal.journal_service, "create_entry", AsyncMock(return_value=entry))
     await journal.create_entry(payload, user, db)
     monkeypatch.setattr(journal.journal_service, "get_entry", AsyncMock(return_value=entry))
@@ -65,13 +73,15 @@ async def test_journal_and_tags_endpoints(monkeypatch):
         tokens_output=2,
         error_message=None,
     )
-    monkeypatch.setattr(journal.journal_ai_service, "trigger_reflection", AsyncMock(return_value=run))
+    monkeypatch.setattr(
+        journal.journal_ai_service, "trigger_reflection", AsyncMock(return_value=run)
+    )
     reflect_payload = SimpleNamespace(mode="entry_plus_recent_context")
     reflected = await journal.reflect_entry(eid, reflect_payload, user, db)
     assert reflected["data"].status == "completed"
 
     async def fake_chunks(_entry_id, _mode, _user_id, _db):
-        yield "event: chunk\ndata: {\"text\":\"one\"}\n\n"
+        yield 'event: chunk\ndata: {"text":"one"}\n\n'
 
     monkeypatch.setattr(journal.journal_ai_service, "stream_reflection", fake_chunks)
     stream_response = await journal.stream_reflection(eid, user, db)
@@ -103,7 +113,11 @@ async def test_journal_and_tags_endpoints(monkeypatch):
     assert len(runs["data"]) == 1
     assert (await journal.journal_stub())["status"] == "not_implemented"
 
-    monkeypatch.setattr(tags.tag_service, "list_for_user", AsyncMock(return_value=[SimpleNamespace(id=uuid4(), name="work")]))
+    monkeypatch.setattr(
+        tags.tag_service,
+        "list_for_user",
+        AsyncMock(return_value=[SimpleNamespace(id=uuid4(), name="work")]),
+    )
     monkeypatch.setattr(tags.TagResponse, "model_validate", staticmethod(lambda x: x))
     out = await tags.list_tags(user, db)
     assert len(out["data"]) == 1
@@ -148,7 +162,9 @@ async def test_journal_repository_coverage():
     uid = uuid4()
     eid = uuid4()
     pid = uuid4()
-    entry = SimpleNamespace(id=eid, user_id=uid, entry_date=date.today(), updated_at=datetime.now(UTC))
+    entry = SimpleNamespace(
+        id=eid, user_id=uid, entry_date=date.today(), updated_at=datetime.now(UTC)
+    )
     run = SimpleNamespace(id=uuid4(), created_at=datetime.now(UTC))
 
     db = FakeSession(
@@ -183,16 +199,22 @@ async def test_journal_repository_coverage():
     assert await journal_repository.get_by_id_including_deleted(eid, uid, db) == entry  # type: ignore[arg-type]
 
     db_write = FakeSession([])
-    created = await journal_repository.create({"entry_date": date.today(), "body": "b"}, uid, db_write)  # type: ignore[arg-type]
+    created = await journal_repository.create(
+        {"entry_date": date.today(), "body": "b"}, uid, db_write
+    )  # type: ignore[arg-type]
     assert created.user_id == uid
     updated = await journal_repository.update(created, {"body": "new"}, db_write)  # type: ignore[arg-type]
     assert updated.body == "new"
     deleted = await journal_repository.soft_delete(updated, db_write)  # type: ignore[arg-type]
     assert deleted.deleted_at is not None
     assert await journal_repository.reverse_timeline_for_person(pid, uid, db) == [entry]  # type: ignore[arg-type]
-    created_run = await journal_repository.create_ai_run({"user_id": uid, "journal_entry_id": eid}, db_write)  # type: ignore[arg-type]
+    created_run = await journal_repository.create_ai_run(
+        {"user_id": uid, "journal_entry_id": eid}, db_write
+    )  # type: ignore[arg-type]
     assert created_run.user_id == uid
-    updated_run = await journal_repository.update_ai_run(created_run, {"status": "completed"}, db_write)  # type: ignore[arg-type]
+    updated_run = await journal_repository.update_ai_run(
+        created_run, {"status": "completed"}, db_write
+    )  # type: ignore[arg-type]
     assert updated_run.status == "completed"
     assert await journal_repository.list_ai_runs(eid, uid, db) == [run]  # type: ignore[arg-type]
 
@@ -215,26 +237,42 @@ async def test_journal_service_coverage(monkeypatch):
     listed = await journal_service.list_entries(uid, {}, 1, 20, db)
     assert listed["meta"].total == 1
 
-    monkeypatch.setattr(journal_service.journal_repository, "get_by_id", AsyncMock(return_value=None))
+    monkeypatch.setattr(
+        journal_service.journal_repository, "get_by_id", AsyncMock(return_value=None)
+    )
     with pytest.raises(AppException):
         await journal_service.get_entry(eid, uid, db)
-    monkeypatch.setattr(journal_service.journal_repository, "get_by_id", AsyncMock(return_value=entry))
+    monkeypatch.setattr(
+        journal_service.journal_repository, "get_by_id", AsyncMock(return_value=entry)
+    )
     assert await journal_service.get_entry(eid, uid, db) is entry
 
     with pytest.raises(AppException):
-        journal_service._validate_person_ids([uuid4() for _ in range(journal_service.MAX_PERSON_LINKS_PER_ENTRY + 1)])
+        journal_service._validate_person_ids(
+            [uuid4() for _ in range(journal_service.MAX_PERSON_LINKS_PER_ENTRY + 1)]
+        )
 
-    monkeypatch.setattr(journal_service.person_repository, "get_by_id", AsyncMock(return_value=None))
+    monkeypatch.setattr(
+        journal_service.person_repository, "get_by_id", AsyncMock(return_value=None)
+    )
     with pytest.raises(AppException):
         await journal_service._resolve_people([pid], uid, db)
-    monkeypatch.setattr(journal_service.person_repository, "get_by_id", AsyncMock(return_value=archived_person))
+    monkeypatch.setattr(
+        journal_service.person_repository, "get_by_id", AsyncMock(return_value=archived_person)
+    )
     with pytest.raises(AppException):
         await journal_service._resolve_people([pid], uid, db)
-    monkeypatch.setattr(journal_service.person_repository, "get_by_id", AsyncMock(return_value=person))
+    monkeypatch.setattr(
+        journal_service.person_repository, "get_by_id", AsyncMock(return_value=person)
+    )
     people = await journal_service._resolve_people([pid, pid], uid, db)
     assert len(people) == 1
 
-    monkeypatch.setattr(journal_service.tag_repository, "get_or_create", AsyncMock(return_value=SimpleNamespace(name="x")))
+    monkeypatch.setattr(
+        journal_service.tag_repository,
+        "get_or_create",
+        AsyncMock(return_value=SimpleNamespace(name="x")),
+    )
     tags_list = await journal_service._resolve_tags(["x", " "], uid, db)
     assert len(tags_list) == 1
     journal_service._touch_last_talked([person], date.today())
@@ -257,7 +295,9 @@ async def test_journal_service_coverage(monkeypatch):
     )
     assert updated is entry
 
-    monkeypatch.setattr(journal_service.journal_repository, "soft_delete", AsyncMock(return_value=entry))
+    monkeypatch.setattr(
+        journal_service.journal_repository, "soft_delete", AsyncMock(return_value=entry)
+    )
     assert await journal_service.delete_entry(eid, uid, db) is entry
 
 
@@ -279,9 +319,18 @@ async def test_journal_ai_service_and_timeline(monkeypatch):
     )
     run = SimpleNamespace(id=uuid4(), status="running", response_text=None)
 
-    assert journal_ai_service._extract_text(SimpleNamespace(content=[SimpleNamespace(text="a"), SimpleNamespace(text="b")])) == "ab"
+    assert (
+        journal_ai_service._extract_text(
+            SimpleNamespace(content=[SimpleNamespace(text="a"), SimpleNamespace(text="b")])
+        )
+        == "ab"
+    )
     assert journal_ai_service._extract_text(SimpleNamespace(text="x")) == "x"
-    assert journal_ai_service._extract_text(SimpleNamespace()) == journal_ai_service.DEFAULT_REFLECTION_TEXT
+    assert (
+        journal_ai_service._extract_text(SimpleNamespace())
+        == journal_ai_service.DEFAULT_REFLECTION_TEXT
+    )
+
     class DummyMessages:
         @staticmethod
         def create(**_kwargs):
@@ -298,12 +347,13 @@ async def test_journal_ai_service_and_timeline(monkeypatch):
     import sys
 
     dummy_module = DummyAnthropicModule()
-    setattr(dummy_module, "Anthropic", DummyAnthropicClient)
+    dummy_module.Anthropic = DummyAnthropicClient
     monkeypatch.setitem(sys.modules, "anthropic", dummy_module)
     reflection_text, t_in, t_out = journal_ai_service._generate_reflection("prompt")
     assert reflection_text == "ok"
     assert t_in == 11
     assert t_out == 22
+
     def raising_client():
         raise RuntimeError("boom")
 
@@ -313,17 +363,31 @@ async def test_journal_ai_service_and_timeline(monkeypatch):
     assert fallback_in is None
     assert fallback_out is None
 
-    monkeypatch.setattr(journal_ai_service.journal_repository, "get_by_id", AsyncMock(return_value=None))
+    monkeypatch.setattr(
+        journal_ai_service.journal_repository, "get_by_id", AsyncMock(return_value=None)
+    )
     with pytest.raises(AppException):
         await journal_ai_service.trigger_reflection(eid, "m", uid, db)
     with pytest.raises(AppException):
         await anext(journal_ai_service.stream_reflection(eid, "m", uid, db))
 
-    monkeypatch.setattr(journal_ai_service.journal_repository, "get_by_id", AsyncMock(return_value=entry))
-    monkeypatch.setattr(journal_ai_service.journal_repository, "list_recent_non_deleted", AsyncMock(return_value=[entry]))
-    monkeypatch.setattr(journal_ai_service.journal_repository, "create_ai_run", AsyncMock(return_value=run))
-    monkeypatch.setattr(journal_ai_service.journal_repository, "update_ai_run", AsyncMock(return_value=run))
-    monkeypatch.setattr(journal_ai_service, "_generate_reflection", lambda _prompt: ("hello world", 10, 20))
+    monkeypatch.setattr(
+        journal_ai_service.journal_repository, "get_by_id", AsyncMock(return_value=entry)
+    )
+    monkeypatch.setattr(
+        journal_ai_service.journal_repository,
+        "list_recent_non_deleted",
+        AsyncMock(return_value=[entry]),
+    )
+    monkeypatch.setattr(
+        journal_ai_service.journal_repository, "create_ai_run", AsyncMock(return_value=run)
+    )
+    monkeypatch.setattr(
+        journal_ai_service.journal_repository, "update_ai_run", AsyncMock(return_value=run)
+    )
+    monkeypatch.setattr(
+        journal_ai_service, "_generate_reflection", lambda _prompt: ("hello world", 10, 20)
+    )
     reflected = await journal_ai_service.trigger_reflection(eid, "mode", uid, db)
     assert reflected is run
     chunks = []
@@ -331,7 +395,9 @@ async def test_journal_ai_service_and_timeline(monkeypatch):
         chunks.append(chunk)
     assert any("event: done" in chunk for chunk in chunks)
 
-    monkeypatch.setattr(person_repository, "get_by_id", AsyncMock(return_value=SimpleNamespace(id=pid)))
+    monkeypatch.setattr(
+        person_repository, "get_by_id", AsyncMock(return_value=SimpleNamespace(id=pid))
+    )
     monkeypatch.setattr(person_repository, "get_timeline", AsyncMock(return_value=[entry]))
     assert await people_service.get_timeline(pid, uid, db) == [entry]
 
