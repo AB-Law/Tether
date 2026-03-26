@@ -8,8 +8,9 @@ Create Date: 2026-03-26 12:43:00
 from collections.abc import Sequence
 
 import sqlalchemy as sa
-from alembic import op
 from sqlalchemy.dialects import postgresql
+
+from alembic import op
 
 revision: str = "0005_moments_table"
 down_revision: str | Sequence[str] | None = "0004_people_table"
@@ -18,7 +19,15 @@ depends_on: str | Sequence[str] | None = None
 
 
 SENTIMENT_TYPES = ("warm", "neutral", "hurtful", "complicated")
-MOMENT_TYPES = ("conversation", "shared_experience", "act_of_care", "conflict", "milestone", "observation", "other")
+MOMENT_TYPES = (
+    "conversation",
+    "shared_experience",
+    "act_of_care",
+    "conflict",
+    "milestone",
+    "observation",
+    "other",
+)
 
 
 def upgrade() -> None:
@@ -34,15 +43,30 @@ def upgrade() -> None:
         sa.Column("what_happened", sa.Text(), nullable=False),
         sa.Column("notes", sa.Text(), nullable=True),
         sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.text("now()")),
-        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.text("now()")),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            nullable=False,
+            server_default=sa.text("now()"),
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            nullable=False,
+            server_default=sa.text("now()"),
+        ),
         sa.CheckConstraint(f"sentiment IN {SENTIMENT_TYPES}", name="ck_moments_sentiment"),
         sa.CheckConstraint(f"moment_type IN {MOMENT_TYPES}", name="ck_moments_moment_type"),
         sa.ForeignKeyConstraint(["person_id"], ["people.id"], ondelete="CASCADE"),
         sa.ForeignKeyConstraint(["user_id"], ["users.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
     )
-    op.create_index("ix_moments_user_person_occurred", "moments", ["user_id", "person_id", "occurred_on"], unique=False)
+    op.create_index(
+        "ix_moments_user_person_occurred",
+        "moments",
+        ["user_id", "person_id", "occurred_on"],
+        unique=False,
+    )
 
 
 def downgrade() -> None:

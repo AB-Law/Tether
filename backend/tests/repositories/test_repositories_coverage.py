@@ -1,14 +1,19 @@
 import asyncio
 from datetime import UTC, date, datetime, timedelta
 from types import SimpleNamespace
+from unittest.mock import AsyncMock
 from uuid import uuid4
 
 import pytest
-from unittest.mock import AsyncMock
 
 from app.core import enums, exceptions
 from app.domain.people.rules import SentimentEnum, compute_warmth_score
-from app.repositories import moment_repository, person_repository, reminder_repository, user_repository
+from app.repositories import (
+    moment_repository,
+    person_repository,
+    reminder_repository,
+    user_repository,
+)
 from app.schemas.common import NotImplementedResponse
 from app.workers import reminder_jobs
 from tests.helpers import ExecuteResult, FakeSession
@@ -30,7 +35,9 @@ async def test_repositories_models_rules_and_worker(monkeypatch):
             ExecuteResult(
                 rows=[
                     SimpleNamespace(last_talked_at=None, contact_cadence_days=2),
-                    SimpleNamespace(last_talked_at=date.today() - timedelta(days=5), contact_cadence_days=2),
+                    SimpleNamespace(
+                        last_talked_at=date.today() - timedelta(days=5), contact_cadence_days=2
+                    ),
                     SimpleNamespace(last_talked_at=date.today(), contact_cadence_days=2),
                 ]
             ),
@@ -41,7 +48,9 @@ async def test_repositories_models_rules_and_worker(monkeypatch):
             ExecuteResult(rows=["r1"]),
             ExecuteResult(rows=["r2"]),
             ExecuteResult(one_or_none="r3"),
-            ExecuteResult(rows=[SimpleNamespace(status="pending"), SimpleNamespace(status="pending")]),
+            ExecuteResult(
+                rows=[SimpleNamespace(status="pending"), SimpleNamespace(status="pending")]
+            ),
         ]
     )
     assert await user_repository.get_by_email("a@b.com", db) == "u"  # type: ignore[arg-type]
@@ -61,7 +70,13 @@ async def test_repositories_models_rules_and_worker(monkeypatch):
     assert await person_repository.new_people(uid, db) == ["pb"]  # type: ignore[arg-type]
     db_archived = FakeSession([ExecuteResult(one=1), ExecuteResult(rows=["archived"])])
     archived_items, archived_total = await person_repository.list_people(
-        uid, None, None, True, 1, 10, db_archived  # type: ignore[arg-type]
+        uid,
+        None,
+        None,
+        True,
+        1,
+        10,
+        db_archived,  # type: ignore[arg-type]
     )
     assert archived_total == 1
     assert archived_items == ["archived"]

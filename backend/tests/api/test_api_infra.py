@@ -1,4 +1,5 @@
 from types import SimpleNamespace
+from unittest.mock import AsyncMock, Mock
 
 import pytest
 from fastapi import FastAPI
@@ -6,7 +7,6 @@ from fastapi.testclient import TestClient
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.requests import Request
 from starlette.responses import Response
-from unittest.mock import AsyncMock, Mock
 
 from app.api import cors_diagnostics, deps, error_handlers
 from app.api.v1.endpoints import almanac, health, journal
@@ -93,16 +93,25 @@ async def test_cors_middleware_dispatch_and_origin_check(monkeypatch):
     await middleware.dispatch(req_400, AsyncMock(return_value=Response(status_code=400)))
     logger_warn.assert_called_once()
     non_preflight = Request({"type": "http", "method": "GET", "path": "/x", "headers": []})
-    res = await middleware.dispatch(non_preflight, AsyncMock(return_value=Response(status_code=204)))
+    res = await middleware.dispatch(
+        non_preflight, AsyncMock(return_value=Response(status_code=204))
+    )
     assert res.status_code == 204
     monkeypatch.setattr(cors_diagnostics.settings, "cors_origins", ["http://ok"])
-    monkeypatch.setattr(cors_diagnostics.settings, "cors_origin_regex", r"^https://.*\.example\.com$")
+    monkeypatch.setattr(
+        cors_diagnostics.settings, "cors_origin_regex", r"^https://.*\.example\.com$"
+    )
     assert cors_diagnostics.CorsDiagnosticsMiddleware._is_origin_allowed(None) is False
     assert cors_diagnostics.CorsDiagnosticsMiddleware._is_origin_allowed("http://ok") is True
-    assert cors_diagnostics.CorsDiagnosticsMiddleware._is_origin_allowed("https://a.example.com") is True
+    assert (
+        cors_diagnostics.CorsDiagnosticsMiddleware._is_origin_allowed("https://a.example.com")
+        is True
+    )
     assert cors_diagnostics.CorsDiagnosticsMiddleware._is_origin_allowed("http://bad") is False
     monkeypatch.setattr(cors_diagnostics.settings, "cors_origin_regex", None)
-    assert cors_diagnostics.CorsDiagnosticsMiddleware._is_origin_allowed("http://still-bad") is False
+    assert (
+        cors_diagnostics.CorsDiagnosticsMiddleware._is_origin_allowed("http://still-bad") is False
+    )
 
 
 @pytest.mark.asyncio

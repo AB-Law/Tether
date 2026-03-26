@@ -2,7 +2,8 @@ import logging
 
 import pytest
 
-from app.core import exceptions, logging as app_logging, security
+from app.core import exceptions, security
+from app.core import logging as app_logging
 from tests.helpers import FakeSession
 
 

@@ -1,11 +1,12 @@
 from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
+from unittest.mock import AsyncMock
 from uuid import uuid4
 
 import pytest
+from fastapi import HTTPException
 from starlette.requests import Request
 from starlette.responses import Response
-from unittest.mock import AsyncMock
 
 from app.api.v1.endpoints import auth, moments, people, reminders
 from app.core import exceptions
@@ -26,7 +27,7 @@ async def test_auth_endpoint_flows(monkeypatch):
     )
     assert login_res.access_token == "at"
     db.commit.assert_awaited_once()
-    with pytest.raises(Exception):
+    with pytest.raises(HTTPException):
         await auth.refresh(Request({"type": "http", "headers": []}), Response(), db)  # type: ignore[arg-type]
     monkeypatch.setattr(auth.auth_service, "refresh", AsyncMock(return_value=("new-at", "new-rt")))
     req_with_cookie = Request(
@@ -66,7 +67,10 @@ async def test_moments_people_reminders_endpoints(monkeypatch):
         AsyncMock(return_value=SimpleNamespace(id=mid, user_id=uid, person_id=pid)),
     )
     created = await moments.create_person_moment(
-        pid, SimpleNamespace(model_dump=lambda: {"notes": "n"}), user, db  # type: ignore[arg-type]
+        pid,
+        SimpleNamespace(model_dump=lambda: {"notes": "n"}),
+        user,
+        db,  # type: ignore[arg-type]
     )
     assert created.raw.person_id == pid
     monkeypatch.setattr(
@@ -81,7 +85,10 @@ async def test_moments_people_reminders_endpoints(monkeypatch):
         AsyncMock(return_value=SimpleNamespace(id=mid, user_id=uid, person_id=pid)),
     )
     await moments.update_moment(
-        mid, SimpleNamespace(model_dump=lambda exclude_unset: {"notes": "u"}), user, db  # type: ignore[arg-type]
+        mid,
+        SimpleNamespace(model_dump=lambda exclude_unset: {"notes": "u"}),
+        user,
+        db,  # type: ignore[arg-type]
     )
     monkeypatch.setattr(moments.moment_service, "delete_moment", AsyncMock(return_value=None))
     await moments.delete_moment(mid, user, db)  # type: ignore[arg-type]
@@ -92,7 +99,9 @@ async def test_moments_people_reminders_endpoints(monkeypatch):
         AsyncMock(return_value=[SimpleNamespace(id=pid, user_id=uid)]),
     )
     monkeypatch.setattr(
-        people.people_service, "get_new_people", AsyncMock(return_value=[SimpleNamespace(id=pid, user_id=uid)])
+        people.people_service,
+        "get_new_people",
+        AsyncMock(return_value=[SimpleNamespace(id=pid, user_id=uid)]),
     )
     monkeypatch.setattr(
         people.people_service,
@@ -136,31 +145,54 @@ async def test_moments_people_reminders_endpoints(monkeypatch):
     await people.create_person(SimpleNamespace(model_dump=lambda: {"name": "A"}), user, db)  # type: ignore[arg-type]
     await people.get_person(pid, user, db)  # type: ignore[arg-type]
     await people.update_person(
-        pid, SimpleNamespace(model_dump=lambda exclude_unset: {"name": "B"}), user, db  # type: ignore[arg-type]
+        pid,
+        SimpleNamespace(model_dump=lambda exclude_unset: {"name": "B"}),
+        user,
+        db,  # type: ignore[arg-type]
     )
     await people.archive_person(pid, user, db)  # type: ignore[arg-type]
     assert await people.get_person_timeline(pid, user, db) == {"data": []}  # type: ignore[arg-type]
 
     pending_rem = SimpleNamespace(id=rid)
-    monkeypatch.setattr(reminders.reminder_repository, "list_pending_for_user", AsyncMock(return_value=[pending_rem]))
-    monkeypatch.setattr(reminders.reminder_repository, "create", AsyncMock(return_value=pending_rem))
-    monkeypatch.setattr(reminders.reminder_repository, "get_for_user", AsyncMock(return_value=pending_rem))
-    monkeypatch.setattr(reminders.reminder_repository, "snooze", AsyncMock(return_value=pending_rem))
+    monkeypatch.setattr(
+        reminders.reminder_repository,
+        "list_pending_for_user",
+        AsyncMock(return_value=[pending_rem]),
+    )
+    monkeypatch.setattr(
+        reminders.reminder_repository, "create", AsyncMock(return_value=pending_rem)
+    )
+    monkeypatch.setattr(
+        reminders.reminder_repository, "get_for_user", AsyncMock(return_value=pending_rem)
+    )
+    monkeypatch.setattr(
+        reminders.reminder_repository, "snooze", AsyncMock(return_value=pending_rem)
+    )
     monkeypatch.setattr(
         reminders.ReminderResponse, "model_validate", staticmethod(lambda x: SimpleNamespace(raw=x))
     )
     await reminders.list_reminders(user, db)  # type: ignore[arg-type]
     await reminders.create_reminder(
-        SimpleNamespace(model_dump=lambda: {"entity_type": "person"}), user, db  # type: ignore[arg-type]
+        SimpleNamespace(model_dump=lambda: {"entity_type": "person"}),
+        user,
+        db,  # type: ignore[arg-type]
     )
     await reminders.update_reminder(
-        rid, SimpleNamespace(model_dump=lambda exclude_unset: {"status": "pending"}), user, db  # type: ignore[arg-type]
+        rid,
+        SimpleNamespace(model_dump=lambda exclude_unset: {"status": "pending"}),
+        user,
+        db,  # type: ignore[arg-type]
     )
     await reminders.snooze_reminder(
-        rid, SimpleNamespace(until=datetime.now(UTC) + timedelta(days=1)), user, db  # type: ignore[arg-type]
+        rid,
+        SimpleNamespace(until=datetime.now(UTC) + timedelta(days=1)),
+        user,
+        db,  # type: ignore[arg-type]
     )
     monkeypatch.setattr(reminders.reminder_repository, "get_for_user", AsyncMock(return_value=None))
     with pytest.raises(exceptions.AppException):
-        await reminders.update_reminder(rid, SimpleNamespace(model_dump=lambda exclude_unset: {}), user, db)  # type: ignore[arg-type]
+        await reminders.update_reminder(
+            rid, SimpleNamespace(model_dump=lambda exclude_unset: {}), user, db
+        )  # type: ignore[arg-type]
     with pytest.raises(exceptions.AppException):
         await reminders.snooze_reminder(rid, SimpleNamespace(until=datetime.now(UTC)), user, db)  # type: ignore[arg-type]
