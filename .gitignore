@@ -21,6 +21,7 @@ __pycache__/
 .coverage
 coverage.xml
 htmlcov/
+frontend/coverage/
 
 # Type checking caches (if used)
 .mypy_cache/

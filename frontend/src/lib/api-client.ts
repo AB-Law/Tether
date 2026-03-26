@@ -1,6 +1,8 @@
 import axios, { AxiosError } from 'axios'
 import type { AxiosRequestConfig } from 'axios'
 
+import { refresh } from '../features/auth/api/refresh'
+
 type RetryConfig = AxiosRequestConfig & { _retry?: boolean }
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000'
@@ -29,10 +31,8 @@ apiClient.interceptors.request.use((config) => {
 })
 
 const refreshAccessToken = async () => {
-  const response = await axios.post<{ access_token: string }>(`${API_BASE_URL}/api/v1/auth/refresh`, null, {
-    withCredentials: true,
-  })
-  tokenStore.set(response.data.access_token)
+  const response = await refresh()
+  tokenStore.set(response.access_token)
 }
 
 apiClient.interceptors.response.use(
@@ -41,7 +41,7 @@ apiClient.interceptors.response.use(
     const originalRequest = error.config as RetryConfig | undefined
 
     if (error.response?.status !== 401 || !originalRequest || originalRequest._retry) {
-      return Promise.reject(error)
+      throw error
     }
 
     originalRequest._retry = true
@@ -54,8 +54,8 @@ apiClient.interceptors.response.use(
       return apiClient(originalRequest)
     } catch (refreshError) {
       tokenStore.set(null)
-      window.location.assign('/login')
-      return Promise.reject(refreshError)
+      globalThis.location.assign('/login')
+      throw refreshError
     }
   },
 )

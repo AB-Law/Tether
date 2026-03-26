@@ -1,3 +1,5 @@
+from typing import Annotated
+
 from fastapi import APIRouter, Depends, status
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
@@ -14,7 +16,9 @@ async def healthcheck() -> dict[str, str]:
 
 
 @router.get("/ready")
-async def readiness_check(db_session: AsyncSession = Depends(get_db_session)) -> JSONResponse:
+async def readiness_check(
+    db_session: Annotated[AsyncSession, Depends(get_db_session)],
+) -> JSONResponse:
     try:
         await db_session.execute(text("SELECT 1"))
     except Exception:

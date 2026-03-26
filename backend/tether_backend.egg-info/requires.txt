@@ -12,6 +12,7 @@ python-dotenv
 
 [dev]
 pytest
+pytest-cov
 pytest-asyncio
 httpx
 ruff
