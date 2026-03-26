@@ -1,5 +1,8 @@
+import { useEffect } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
 
+import { useQuickCaptureStore } from '../app/store/quickCapture'
+import { QuickCapturePanel } from '../features/almanac/components/QuickCapturePanel'
 import { tokenStore } from '../lib/api-client'
 
 const navLinks = [
@@ -10,6 +13,20 @@ const navLinks = [
 ]
 
 export function AppShell() {
+  const toggleQuickCapture = useQuickCaptureStore((state) => state.toggle)
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault()
+        toggleQuickCapture()
+      }
+    }
+
+    globalThis.addEventListener('keydown', onKeyDown)
+    return () => globalThis.removeEventListener('keydown', onKeyDown)
+  }, [toggleQuickCapture])
+
   return (
     <main className="min-h-screen bg-slate-50 text-slate-900">
       <div className="flex min-h-screen">
@@ -59,6 +76,13 @@ export function AppShell() {
               </div>
               <div className="flex items-center gap-2 text-slate-500">
                 <button
+                  className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 hover:border-slate-300 hover:text-slate-900"
+                  onClick={toggleQuickCapture}
+                  type="button"
+                >
+                  Capture
+                </button>
+                <button
                   aria-label="Notifications"
                   className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 transition hover:border-slate-300 hover:text-slate-700"
                   type="button"
@@ -84,6 +108,7 @@ export function AppShell() {
           </section>
         </div>
       </div>
+      <QuickCapturePanel />
     </main>
   )
 }

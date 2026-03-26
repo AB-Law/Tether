@@ -1,4 +1,6 @@
-from contextlib import asynccontextmanager
+import asyncio
+import os
+from contextlib import asynccontextmanager, suppress
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -8,6 +10,7 @@ from app.api.error_handlers import register_exception_handlers
 from app.api.router import api_router
 from app.core.config import settings
 from app.core.logging import configure_logging, get_logger
+from app.workers.reminder_jobs import run_poll_loop
 
 configure_logging()
 logger = get_logger(__name__)
@@ -16,7 +19,14 @@ logger = get_logger(__name__)
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     logger.info("Starting Tether API")
+    reminder_task = None
+    if settings.app_env != "test" and os.getenv("PYTEST_CURRENT_TEST") is None:
+        reminder_task = asyncio.create_task(run_poll_loop())
     yield
+    if reminder_task is not None:
+        reminder_task.cancel()
+        with suppress(asyncio.CancelledError):
+            await reminder_task
     logger.info("Stopping Tether API")
 
 

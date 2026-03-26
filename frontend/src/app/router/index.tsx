@@ -1,6 +1,9 @@
 import { Navigate, createBrowserRouter } from 'react-router-dom'
 
 import { AuthGuard } from '../../features/auth/components/AuthGuard'
+import { AlmanacEditorPage } from '../../features/almanac/routes/AlmanacEditorPage'
+import { AlmanacEntryPage } from '../../features/almanac/routes/AlmanacEntryPage'
+import { AlmanacPage } from '../../features/almanac/routes/AlmanacPage'
 import { JournalEditorPage } from '../../features/journal/routes/JournalEditorPage'
 import { JournalEntryPage } from '../../features/journal/routes/JournalEntryPage'
 import { JournalListPage } from '../../features/journal/routes/JournalListPage'
@@ -34,7 +37,9 @@ export const router = createBrowserRouter([
       { path: 'journal/new', element: <JournalEditorPage /> },
       { path: 'journal/:entryId', element: <JournalEntryPage /> },
       { path: 'journal/:entryId/edit', element: <JournalEditorPage /> },
-      { path: 'almanac', element: <RoutePlaceholder label="Almanac" /> },
+      { path: 'almanac', element: <AlmanacPage /> },
+      { path: 'almanac/new', element: <AlmanacEditorPage /> },
+      { path: 'almanac/:entryId', element: <AlmanacEntryPage /> },
       { path: 'reminders', element: <RoutePlaceholder label="Reminders" /> },
     ],
   },
