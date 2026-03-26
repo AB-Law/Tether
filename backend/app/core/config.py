@@ -11,13 +11,15 @@ class Settings(BaseSettings):
     #
     # In production, override these via real environment injection (1Password / secrets).
     app_secret_key: str = "dev-change-me"
-    database_url: str
+    database_url: str = "postgresql+asyncpg://tether:${DATABASE_PASSWORD}@localhost:5432/tether"
     anthropic_api_key: str = "dev-anthropic"
-    # When set, Anthropic API clients should use this base URL (e.g. LM Studio local Anthropic-compatible server).
+    # When set, Anthropic API clients should use this base URL.
+    # Example: LM Studio local Anthropic-compatible server.
     anthropic_base_url: str | None = None
     access_token_ttl_minutes: int = 15
     refresh_token_ttl_days: int = 30
     cors_origins: list[str] = Field(default_factory=lambda: ["http://localhost:5173"])
+    cors_origin_regex: str | None = r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$"
 
     model_config = SettingsConfigDict(
         env_file=".env",
