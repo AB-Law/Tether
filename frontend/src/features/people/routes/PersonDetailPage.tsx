@@ -3,7 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 
 import { MomentForm } from '../../moments/components/MomentForm'
 import { useCreateMoment, useMoments } from '../../moments/hooks/useMoments'
-import { useDeletePerson, usePerson } from '../hooks/usePeople'
+import { useDeletePerson, usePerson, usePersonTimeline } from '../hooks/usePeople'
 
 const sentimentTone: Record<string, string> = {
   warm: 'bg-emerald-50 text-emerald-700',
@@ -22,6 +22,7 @@ const formatDate = (value: string | null) => {
 export function PersonDetailPage() {
   const { personId = '' } = useParams()
   const { data, isLoading } = usePerson(personId)
+  const { data: timeline } = usePersonTimeline(personId)
   const { data: moments } = useMoments(personId)
   const createMoment = useCreateMoment(personId)
   const deletePerson = useDeletePerson()
@@ -136,14 +137,18 @@ export function PersonDetailPage() {
         </aside>
       </section>
 
-      <section className="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center">
-        <p className="text-2xl font-semibold text-slate-400">Reverse Journal Timeline</p>
-        <p className="mx-auto mt-2 max-w-xl text-sm text-slate-500">
-          Journal timeline coming in Phase 2. We are building a way to see this relationship unfold through your shared entries.
-        </p>
-        <span className="mt-4 inline-flex rounded-full border border-slate-200 px-3 py-1 text-[11px] uppercase tracking-widest text-slate-400">
-          Development Stage: Beta
-        </span>
+      <section className="space-y-3 rounded-2xl border border-slate-200 bg-white px-6 py-6">
+        <h3 className="text-2xl font-semibold tracking-tight text-slate-900">Journal Timeline</h3>
+        {!timeline || timeline.length === 0 ? (
+          <p className="text-sm text-slate-500">No journal entries mention this person yet.</p>
+        ) : (
+          timeline.map((entry) => (
+            <article className="rounded-lg border border-slate-200 p-3" key={entry.id}>
+              <p className="text-xs uppercase tracking-wide text-slate-500">{entry.entry_date}</p>
+              <p className="mt-1 text-sm text-slate-700">{entry.body.slice(0, 200)}</p>
+            </article>
+          ))
+        )}
       </section>
     </div>
   )

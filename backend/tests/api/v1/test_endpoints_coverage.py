@@ -137,6 +137,7 @@ async def test_moments_people_reminders_endpoints(monkeypatch):
         "update_person",
         AsyncMock(return_value=SimpleNamespace(id=pid, user_id=uid)),
     )
+    monkeypatch.setattr(people.people_service, "get_timeline", AsyncMock(return_value=[]))
     monkeypatch.setattr(people.people_service, "archive_person", AsyncMock(return_value=None))
     monkeypatch.setattr(people.PersonResponse, "model_validate", staticmethod(lambda x: x))
     await people.get_drifting_away(user, db)  # type: ignore[arg-type]

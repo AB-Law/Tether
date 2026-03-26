@@ -5,6 +5,7 @@ import { createPerson, type PersonPayload } from '../api/create-person'
 import { deletePerson } from '../api/delete-person'
 import { getDriftingAway } from '../api/get-drifting-away'
 import { getPerson } from '../api/get-person'
+import { getTimeline } from '../api/get-timeline'
 import { listPeople } from '../api/list-people'
 import { updatePerson } from '../api/update-person'
 
@@ -58,4 +59,11 @@ export const useDriftingAway = () =>
   useQuery({
     queryKey: ['people', 'drifting-away'],
     queryFn: getDriftingAway,
+  })
+
+export const usePersonTimeline = (personId: string) =>
+  useQuery({
+    queryKey: ['people', 'timeline', personId],
+    queryFn: () => getTimeline(personId),
+    enabled: Boolean(personId),
   })

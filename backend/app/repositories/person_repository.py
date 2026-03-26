@@ -98,3 +98,9 @@ async def new_people(user_id: UUID, db: AsyncSession) -> list[Person]:
         Person.relationship_type == "new_person",
     )
     return (await db.execute(stmt)).scalars().all()
+
+
+async def get_timeline(person_id: UUID, user_id: UUID, db: AsyncSession):
+    from app.repositories import journal_repository
+
+    return await journal_repository.reverse_timeline_for_person(person_id, user_id, db)

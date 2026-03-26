@@ -9,6 +9,7 @@ const useCreatePerson = vi.fn()
 const useUpdatePerson = vi.fn()
 const useDeletePerson = vi.fn()
 const useDriftingAway = vi.fn(() => ({ isLoading: false, data: [] }))
+const usePersonTimeline = vi.fn(() => ({ data: [] }))
 const useMoments = vi.fn()
 const useCreateMoment = vi.fn()
 
@@ -19,6 +20,7 @@ vi.mock('../features/people/hooks/usePeople', () => ({
   useUpdatePerson,
   useDeletePerson,
   useDriftingAway,
+  usePersonTimeline,
 }))
 
 vi.mock('../features/moments/hooks/useMoments', () => ({
@@ -122,6 +124,9 @@ describe('people routes', () => {
     useMoments.mockReturnValue({
       data: [{ id: 'm1', title: 'x', moment_type: 'conversation', sentiment: 'warm', occurred_on: '2026-01-01', what_happened: 'Talked', notes: null }],
     })
+    usePersonTimeline.mockReturnValue({
+      data: [{ id: 'j1', entry_date: '2026-01-01', body: 'Timeline body entry for Ada' }],
+    })
     rerender(
       <MemoryRouter initialEntries={['/people/p1']}>
         <Routes>
@@ -130,6 +135,7 @@ describe('people routes', () => {
       </MemoryRouter>,
     )
     expect(screen.getByText('Ada Lovelace')).toBeInTheDocument()
+    expect(screen.getByText('Timeline body entry for Ada')).toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: 'Archive' }))
     expect(mutate).toHaveBeenCalledWith('p1')
     await userEvent.click(screen.getByRole('button', { name: 'Add New' }))
@@ -196,6 +202,7 @@ describe('people routes', () => {
     expect(screen.getByText('mystery')).toBeInTheDocument()
 
     useMoments.mockReturnValue({ data: undefined })
+    usePersonTimeline.mockReturnValue({ data: undefined })
     rerender(
       <MemoryRouter initialEntries={['/people/p3']}>
         <Routes>
@@ -204,6 +211,7 @@ describe('people routes', () => {
       </MemoryRouter>,
     )
     expect(screen.getByText('No moments yet. Add your first interaction.')).toBeInTheDocument()
+    expect(screen.getByText('No journal entries mention this person yet.')).toBeInTheDocument()
   })
 
   it('person form supports create and edit flows', async () => {
