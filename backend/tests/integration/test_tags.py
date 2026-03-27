@@ -30,12 +30,12 @@ async def test_tags_list_after_data_creation(
 
 
 @pytest.mark.asyncio
-async def test_tags_sorted_and_empty_for_new_user(
-    api_client: AsyncClient, create_user
-) -> None:
+async def test_tags_sorted_and_empty_for_new_user(api_client: AsyncClient, create_user) -> None:
     email = "fresh-tags@example.com"
     await create_user(email=email, password="password123")
-    login = await api_client.post("/api/v1/auth/login", json={"email": email, "password": "password123"})
+    login = await api_client.post(
+        "/api/v1/auth/login", json={"email": email, "password": "password123"}
+    )
     headers = {"Authorization": f"Bearer {login.json()['access_token']}"}
 
     empty = await api_client.get("/api/v1/tags", headers=headers)

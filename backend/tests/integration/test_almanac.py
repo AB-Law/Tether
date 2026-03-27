@@ -4,7 +4,9 @@ from httpx import AsyncClient
 
 async def _auth_for(api_client: AsyncClient, create_user, email: str) -> dict[str, str]:
     await create_user(email=email, password="password123")
-    login = await api_client.post("/api/v1/auth/login", json={"email": email, "password": "password123"})
+    login = await api_client.post(
+        "/api/v1/auth/login", json={"email": email, "password": "password123"}
+    )
     assert login.status_code == 200
     return {"Authorization": f"Bearer {login.json()['access_token']}"}
 
@@ -86,9 +88,7 @@ async def test_almanac_capture_crud_complete_flow(
 
 
 @pytest.mark.asyncio
-async def test_almanac_validation_and_forbidden(
-    api_client: AsyncClient, create_user
-) -> None:
+async def test_almanac_validation_and_forbidden(api_client: AsyncClient, create_user) -> None:
     user1 = await _auth_for(api_client, create_user, "almanac-owner@example.com")
     user2 = await _auth_for(api_client, create_user, "almanac-other@example.com")
 

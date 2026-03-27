@@ -1,6 +1,7 @@
+from http.cookies import SimpleCookie
+
 import pytest
 from httpx import AsyncClient
-from http.cookies import SimpleCookie
 
 
 @pytest.mark.asyncio
@@ -52,7 +53,9 @@ async def test_refresh_rotation_flow(api_client: AsyncClient, create_user) -> No
     cookie.load(login.headers.get("set-cookie", ""))
     refresh_cookie = cookie["refresh_token"].value
 
-    refresh = await api_client.post("/api/v1/auth/refresh", headers={"Cookie": f"refresh_token={refresh_cookie}"})
+    refresh = await api_client.post(
+        "/api/v1/auth/refresh", headers={"Cookie": f"refresh_token={refresh_cookie}"}
+    )
     assert refresh.status_code == 200
     assert refresh.json()["access_token"]
 
@@ -72,7 +75,9 @@ async def test_refresh_requires_cookie_and_me_rejects_bad_token(api_client: Asyn
     missing_cookie = await api_client.post("/api/v1/auth/refresh")
     assert missing_cookie.status_code == 401
 
-    bad_token = await api_client.get("/api/v1/auth/me", headers={"Authorization": "Bearer invalid-token"})
+    bad_token = await api_client.get(
+        "/api/v1/auth/me", headers={"Authorization": "Bearer invalid-token"}
+    )
     assert bad_token.status_code == 401
 
     logout_without_cookie = await api_client.post("/api/v1/auth/logout")

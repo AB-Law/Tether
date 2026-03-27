@@ -1,4 +1,4 @@
-import { type Dispatch, type SetStateAction, useEffect, useState } from 'react'
+import { type Dispatch, type SetStateAction, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 
 import { EntryTypeIcon } from '../components/EntryTypeIcon'
@@ -316,17 +316,17 @@ export function AlmanacEntryPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [draft, setDraft] = useState<AlmanacEntryDraft>(emptyDraft)
 
-  useEffect(() => {
-    if (isEditMode && entry) {
-      setDraft(toDraft(entry))
-    }
-  }, [entry, isEditMode])
-
   if (entryQuery.isLoading) return <p className="text-sm text-slate-500">Loading entry...</p>
   if (!entry) return <p className="text-sm text-slate-500">Almanac entry not found.</p>
 
   const toggleEditMode = () => {
-    setIsEditMode((value) => !value)
+    setIsEditMode((value) => {
+      const nextValue = !value
+      if (nextValue) {
+        setDraft(toDraft(entry))
+      }
+      return nextValue
+    })
   }
 
   const handleSave = () => {

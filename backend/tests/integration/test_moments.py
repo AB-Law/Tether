@@ -6,7 +6,9 @@ from httpx import AsyncClient
 
 async def _auth_for(api_client: AsyncClient, create_user, email: str) -> dict[str, str]:
     await create_user(email=email, password="password123")
-    login = await api_client.post("/api/v1/auth/login", json={"email": email, "password": "password123"})
+    login = await api_client.post(
+        "/api/v1/auth/login", json={"email": email, "password": "password123"}
+    )
     assert login.status_code == 200
     return {"Authorization": f"Bearer {login.json()['access_token']}"}
 
@@ -62,7 +64,9 @@ async def test_moments_crud(api_client: AsyncClient, auth_headers: dict[str, str
 
 
 @pytest.mark.asyncio
-async def test_moment_not_found_and_missing_person(api_client: AsyncClient, auth_headers: dict[str, str]) -> None:
+async def test_moment_not_found_and_missing_person(
+    api_client: AsyncClient, auth_headers: dict[str, str]
+) -> None:
     missing_get = await api_client.get(
         "/api/v1/moments/00000000-0000-0000-0000-000000000789",
         headers=auth_headers,

@@ -6,7 +6,9 @@ from httpx import AsyncClient
 
 async def _auth_for(api_client: AsyncClient, create_user, email: str) -> dict[str, str]:
     await create_user(email=email, password="password123")
-    login = await api_client.post("/api/v1/auth/login", json={"email": email, "password": "password123"})
+    login = await api_client.post(
+        "/api/v1/auth/login", json={"email": email, "password": "password123"}
+    )
     assert login.status_code == 200
     return {"Authorization": f"Bearer {login.json()['access_token']}"}
 
@@ -56,7 +58,9 @@ async def test_journal_crud_prompt_reflect_and_runs(
 
     from app.services import journal_ai_service
 
-    monkeypatch.setattr(journal_ai_service, "_generate_reflection", lambda _prompt: ("stub reflection", 7, 9))
+    monkeypatch.setattr(
+        journal_ai_service, "_generate_reflection", lambda _prompt: ("stub reflection", 7, 9)
+    )
 
     reflect = await api_client.post(
         f"/api/v1/journal/entries/{entry_id}/reflect",
@@ -123,7 +127,9 @@ async def test_journal_validation_filters_and_errors(
     )
     assert reflect_missing.status_code == 404
 
-    runs_missing = await api_client.get(f"/api/v1/journal/entries/{missing_id}/ai-runs", headers=auth_headers)
+    runs_missing = await api_client.get(
+        f"/api/v1/journal/entries/{missing_id}/ai-runs", headers=auth_headers
+    )
     assert runs_missing.status_code == 404
 
     from app.services import journal_ai_service
@@ -132,9 +138,7 @@ async def test_journal_validation_filters_and_errors(
 
 
 @pytest.mark.asyncio
-async def test_journal_forbidden_person_link(
-    api_client: AsyncClient, create_user
-) -> None:
+async def test_journal_forbidden_person_link(api_client: AsyncClient, create_user) -> None:
     owner_headers = await _auth_for(api_client, create_user, "journal-owner@example.com")
     other_headers = await _auth_for(api_client, create_user, "journal-other@example.com")
 

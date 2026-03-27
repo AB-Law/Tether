@@ -9,7 +9,9 @@ async def test_people_requires_auth(api_client: AsyncClient) -> None:
 
 
 @pytest.mark.asyncio
-async def test_people_crud_and_timeline(api_client: AsyncClient, auth_headers: dict[str, str]) -> None:
+async def test_people_crud_and_timeline(
+    api_client: AsyncClient, auth_headers: dict[str, str]
+) -> None:
     created = await api_client.post(
         "/api/v1/people",
         json={
@@ -54,7 +56,9 @@ async def test_people_crud_and_timeline(api_client: AsyncClient, auth_headers: d
 
 
 @pytest.mark.asyncio
-async def test_people_filters_and_not_found(api_client: AsyncClient, auth_headers: dict[str, str]) -> None:
+async def test_people_filters_and_not_found(
+    api_client: AsyncClient, auth_headers: dict[str, str]
+) -> None:
     missing = await api_client.get(
         "/api/v1/people/00000000-0000-0000-0000-000000000999",
         headers=auth_headers,
@@ -82,6 +86,8 @@ async def test_people_filters_and_not_found(api_client: AsyncClient, auth_header
     assert all(item["relationship_type"] == "new_person" for item in by_relationship.json()["data"])
 
     await api_client.delete(f"/api/v1/people/{p1.json()['id']}", headers=auth_headers)
-    archived_only = await api_client.get("/api/v1/people", params={"archived": "true"}, headers=auth_headers)
+    archived_only = await api_client.get(
+        "/api/v1/people", params={"archived": "true"}, headers=auth_headers
+    )
     assert archived_only.status_code == 200
     assert any(item["id"] == p1.json()["id"] for item in archived_only.json()["data"])

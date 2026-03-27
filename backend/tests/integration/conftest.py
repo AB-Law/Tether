@@ -5,19 +5,20 @@ from datetime import UTC, date, datetime
 
 import pytest
 import pytest_asyncio
-from alembic import command
 from alembic.config import Config
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from testcontainers.postgres import PostgresContainer
 
+from alembic import command
 
 os.environ.setdefault("APP_ENV", "test")
 os.environ.setdefault("APP_SECRET_KEY", "integration-test-secret")
 os.environ.setdefault("ANTHROPIC_API_KEY", "integration-test-anthropic")
 
 ASYNC_PG_PREFIX = "postgresql+asyncpg://"
+
 
 def _asyncpg_url(url: str) -> str:
     if url.startswith(ASYNC_PG_PREFIX):
@@ -77,13 +78,17 @@ async def session_factory(
 async def clean_db(session_factory: async_sessionmaker[AsyncSession]) -> AsyncGenerator[None, None]:
     async with session_factory() as session:
         table_names = (
-            await session.execute(
-                text(
-                    "SELECT tablename FROM pg_tables "
-                    "WHERE schemaname = 'public' AND tablename <> 'alembic_version'"
+            (
+                await session.execute(
+                    text(
+                        "SELECT tablename FROM pg_tables "
+                        "WHERE schemaname = 'public' AND tablename <> 'alembic_version'"
+                    )
                 )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
         if table_names:
             quoted = ", ".join(f'"{table_name}"' for table_name in table_names)
             await session.execute(text(f"TRUNCATE TABLE {quoted} RESTART IDENTITY CASCADE"))
