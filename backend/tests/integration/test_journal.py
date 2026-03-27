@@ -3,14 +3,7 @@ from datetime import date
 import pytest
 from httpx import AsyncClient
 
-
-async def _auth_for(api_client: AsyncClient, create_user, email: str) -> dict[str, str]:
-    await create_user(email=email, password="password123")
-    login = await api_client.post(
-        "/api/v1/auth/login", json={"email": email, "password": "password123"}
-    )
-    assert login.status_code == 200
-    return {"Authorization": f"Bearer {login.json()['access_token']}"}
+from tests.helpers import get_auth_headers
 
 
 @pytest.mark.asyncio
@@ -40,7 +33,10 @@ async def test_journal_crud_prompt_reflect_and_runs(
     assert listed.status_code == 200
     assert listed.json()["meta"]["total"] >= 1
 
-    fetched = await api_client.get(f"/api/v1/journal/entries/{entry_id}", headers=auth_headers)
+    fetched = await api_client.get(
+        f"/api/v1/journal/entries/{entry_id}",
+        headers=auth_headers,
+    )
     assert fetched.status_code == 200
     assert fetched.json()["body"] == "Journal integration entry"
 
@@ -58,8 +54,11 @@ async def test_journal_crud_prompt_reflect_and_runs(
 
     from app.services import journal_ai_service
 
+    def _stub_generate_reflection(_prompt: str) -> tuple[str, int, int]:
+        return "stub reflection", 7, 9
+
     monkeypatch.setattr(
-        journal_ai_service, "_generate_reflection", lambda _prompt: ("stub reflection", 7, 9)
+        journal_ai_service, "_generate_reflection", _stub_generate_reflection
     )
 
     reflect = await api_client.post(
@@ -79,11 +78,17 @@ async def test_journal_crud_prompt_reflect_and_runs(
     assert "event: done" in stream.text
     assert "[DONE]" in stream.text
 
-    runs = await api_client.get(f"/api/v1/journal/entries/{entry_id}/ai-runs", headers=auth_headers)
+    runs = await api_client.get(
+        f"/api/v1/journal/entries/{entry_id}/ai-runs",
+        headers=auth_headers,
+    )
     assert runs.status_code == 200
     assert len(runs.json()["data"]) >= 1
 
-    deleted = await api_client.delete(f"/api/v1/journal/entries/{entry_id}", headers=auth_headers)
+    deleted = await api_client.delete(
+        f"/api/v1/journal/entries/{entry_id}",
+        headers=auth_headers,
+    )
     assert deleted.status_code == 204
 
 
@@ -127,20 +132,23 @@ async def test_journal_validation_filters_and_errors(
     )
     assert reflect_missing.status_code == 404
 
-    runs_missing = await api_client.get(
-        f"/api/v1/journal/entries/{missing_id}/ai-runs", headers=auth_headers
-    )
+    ai_runs_path = f"/api/v1/journal/entries/{missing_id}/ai-runs"
+    runs_missing = await api_client.get(ai_runs_path, headers=auth_headers)
     assert runs_missing.status_code == 404
-
-    from app.services import journal_ai_service
-
-    monkeypatch.setattr(journal_ai_service, "_generate_reflection", lambda _prompt: ("ok", 1, 1))
 
 
 @pytest.mark.asyncio
 async def test_journal_forbidden_person_link(api_client: AsyncClient, create_user) -> None:
-    owner_headers = await _auth_for(api_client, create_user, "journal-owner@example.com")
-    other_headers = await _auth_for(api_client, create_user, "journal-other@example.com")
+    owner_headers = await get_auth_headers(
+        api_client,
+        create_user,
+        "journal-owner@example.com",
+    )
+    other_headers = await get_auth_headers(
+        api_client,
+        create_user,
+        "journal-other@example.com",
+    )
 
     person = await api_client.post(
         "/api/v1/people",

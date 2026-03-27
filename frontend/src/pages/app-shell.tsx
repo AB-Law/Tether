@@ -17,7 +17,19 @@ export function AppShell() {
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
+      const target =
+        (event.target as HTMLElement | null) ??
+        (document.activeElement as HTMLElement | null)
+      const isEditableTarget =
+        !!target &&
+        (target.isContentEditable ||
+          target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.tagName === 'SELECT' ||
+          target.tagName === 'OPTION')
+
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+        if (isEditableTarget) return
         event.preventDefault()
         toggleQuickCapture()
       }

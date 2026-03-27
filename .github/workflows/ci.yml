@@ -44,8 +44,6 @@ jobs:
         run: ruff check backend/
       - name: Run backend tests
         run: pytest backend/tests/
-      - name: Run backend integration tests
-        run: pytest backend/tests/integration -q
 
   frontend-lint-build:
     runs-on: ubuntu-latest

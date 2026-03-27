@@ -36,13 +36,14 @@ async def test_tags_sorted_and_empty_for_new_user(api_client: AsyncClient, creat
     login = await api_client.post(
         "/api/v1/auth/login", json={"email": email, "password": "password123"}
     )
+    assert login.status_code == 200
     headers = {"Authorization": f"Bearer {login.json()['access_token']}"}
 
     empty = await api_client.get("/api/v1/tags", headers=headers)
     assert empty.status_code == 200
     assert empty.json()["data"] == []
 
-    await api_client.post(
+    post_resp = await api_client.post(
         "/api/v1/journal/entries",
         json={
             "entry_date": "2026-01-01",
@@ -51,6 +52,7 @@ async def test_tags_sorted_and_empty_for_new_user(api_client: AsyncClient, creat
         },
         headers=headers,
     )
+    assert post_resp.status_code == 201
     populated = await api_client.get("/api/v1/tags", headers=headers)
     names = [item["name"] for item in populated.json()["data"]]
     assert names == sorted(names)

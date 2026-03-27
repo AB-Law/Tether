@@ -124,7 +124,24 @@ async def test_repositories_models_rules_and_worker(monkeypatch):
 
     conn = PersonConnection(user_id=uid, person_id=pid, connected_person_id=uuid4())
     assert conn.user_id == uid
-    due = [SimpleNamespace(id=uuid4()), SimpleNamespace(id=uuid4())]
+    due = [
+        SimpleNamespace(
+            id=uuid4(),
+            user_id=uuid4(),
+            entity_type="person",
+            entity_id=pid,
+            reminder_type="nudge",
+            payload={"attempt_count": 0},
+        ),
+        SimpleNamespace(
+            id=uuid4(),
+            user_id=uuid4(),
+            entity_type="person",
+            entity_id=uuid4(),
+            reminder_type="nudge",
+            payload={"attempt_count": 0},
+        ),
+    ]
     sess = FakeSession([])
 
     class Ctx:
@@ -138,17 +155,12 @@ async def test_repositories_models_rules_and_worker(monkeypatch):
     monkeypatch.setattr(reminder_jobs.reminder_repository, "get_due", AsyncMock(return_value=due))
     monkeypatch.setattr(reminder_jobs.reminder_repository, "mark_sent", AsyncMock())
     await reminder_jobs.process_due_reminders()
-    sess.commit.assert_awaited_once()
-    called = {"count": 0}
+    assert reminder_jobs.reminder_repository.mark_sent.await_count == 2  # type: ignore[attr-defined]
+    async def failing_process():
+        raise RuntimeError("process-failed")
 
-    async def fake_process():
-        await asyncio.sleep(0)
-        called["count"] += 1
-        if called["count"] == 1:
-            raise RuntimeError("stop")
-
-    monkeypatch.setattr(reminder_jobs, "process_due_reminders", fake_process)
-    monkeypatch.setattr(asyncio, "sleep", AsyncMock())
+    monkeypatch.setattr(reminder_jobs, "process_due_reminders", failing_process)
+    monkeypatch.setattr(asyncio, "sleep", AsyncMock(side_effect=RuntimeError("stop")))
     with pytest.raises(RuntimeError):
         await reminder_jobs.run_poll_loop(interval_seconds=0)
 

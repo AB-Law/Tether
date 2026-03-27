@@ -27,7 +27,7 @@ class AlmanacCaptureRequest(BaseModel):
 
 class AlmanacEntryUpdate(BaseModel):
     entry_type: EntryTypeEnum | None = None
-    title: str | None = None
+    title: str | None = Field(default=None, min_length=1)
     body: str | None = None
     tag_names: list[str] | None = None
     due_date: date | None = None
@@ -39,7 +39,7 @@ class AlmanacEntryUpdate(BaseModel):
 class AlmanacEntryResponse(BaseModel):
     id: UUID
     user_id: UUID
-    entry_type: str
+    entry_type: EntryTypeEnum
     title: str
     body: str | None = None
     due_date: date | None = None

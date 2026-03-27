@@ -29,7 +29,9 @@ async def test_people_crud_and_timeline(
     assert listed.status_code == 200
     assert listed.json()["meta"]["total"] >= 1
 
-    fetched = await api_client.get(f"/api/v1/people/{person_id}", headers=auth_headers)
+    fetched = await api_client.get(
+        f"/api/v1/people/{person_id}", headers=auth_headers
+    )
     assert fetched.status_code == 200
     assert fetched.json()["name"] == "Pat"
 
@@ -41,7 +43,10 @@ async def test_people_crud_and_timeline(
     assert updated.status_code == 200
     assert updated.json()["name"] == "Pat Updated"
 
-    timeline = await api_client.get(f"/api/v1/people/{person_id}/timeline", headers=auth_headers)
+    timeline = await api_client.get(
+        f"/api/v1/people/{person_id}/timeline",
+        headers=auth_headers,
+    )
     assert timeline.status_code == 200
     assert "data" in timeline.json()
 
@@ -51,7 +56,10 @@ async def test_people_crud_and_timeline(
     drifting = await api_client.get("/api/v1/people/drifting-away", headers=auth_headers)
     assert drifting.status_code == 200
 
-    archived = await api_client.delete(f"/api/v1/people/{person_id}", headers=auth_headers)
+    archived = await api_client.delete(
+        f"/api/v1/people/{person_id}",
+        headers=auth_headers,
+    )
     assert archived.status_code == 204
 
 
@@ -83,9 +91,13 @@ async def test_people_filters_and_not_found(
         headers=auth_headers,
     )
     assert by_relationship.status_code == 200
-    assert all(item["relationship_type"] == "new_person" for item in by_relationship.json()["data"])
+    assert all(
+        item["relationship_type"] == "new_person" for item in by_relationship.json()["data"]
+    )
 
-    await api_client.delete(f"/api/v1/people/{p1.json()['id']}", headers=auth_headers)
+    await api_client.delete(
+        f"/api/v1/people/{p1.json()['id']}", headers=auth_headers
+    )
     archived_only = await api_client.get(
         "/api/v1/people", params={"archived": "true"}, headers=auth_headers
     )

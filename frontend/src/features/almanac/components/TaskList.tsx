@@ -4,19 +4,32 @@ import type { AlmanacEntry } from '../types'
 
 interface TaskListProps {
   readonly entries: AlmanacEntry[]
-  readonly onComplete: (entryId: string) => void
+  readonly onComplete: (entryId: string, isCompleted: boolean) => Promise<void>
 }
 
 function isOverdue(dueDate?: string | null) {
   if (!dueDate) return false
-  const today = new Date().toISOString().slice(0, 10)
+  const todayDate = new Date()
+  const today = `${todayDate.getFullYear()}-${String(todayDate.getMonth() + 1).padStart(
+    2,
+    '0',
+  )}-${String(todayDate.getDate()).padStart(2, '0')}`
   return dueDate < today
 }
 
 export function TaskList({ entries, onComplete }: Readonly<TaskListProps>) {
-  const [completedIds, setCompletedIds] = useState<Set<string>>(
-    () => new Set(entries.filter((entry) => entry.is_completed).map((entry) => entry.id)),
-  )
+  const [optimisticCompleted, setOptimisticCompleted] = useState<Record<string, boolean>>({})
+  const completedIds = useMemo(() => {
+    const next = new Set(entries.filter((entry) => entry.is_completed).map((entry) => entry.id))
+    for (const [entryId, isCompleted] of Object.entries(optimisticCompleted)) {
+      if (isCompleted) {
+        next.add(entryId)
+      } else {
+        next.delete(entryId)
+      }
+    }
+    return next
+  }, [entries, optimisticCompleted])
 
   const tasks = useMemo(() => entries.filter((entry) => entry.entry_type === 'task'), [entries])
 
@@ -44,15 +57,31 @@ export function TaskList({ entries, onComplete }: Readonly<TaskListProps>) {
                   checked={completed}
                   className="mt-1 h-4 w-4 rounded border-slate-300 text-blue-600"
                   onChange={() => {
-                    setCompletedIds((prev) => {
-                      const next = new Set(prev)
-                      if (next.has(task.id)) next.delete(task.id)
-                      else {
-                        next.add(task.id)
-                        onComplete(task.id)
-                      }
-                      return next
-                    })
+                    const nextCompleted = !completed
+                    setOptimisticCompleted((prev) => ({
+                      ...prev,
+                      [task.id]: nextCompleted,
+                    }))
+                    const request = onComplete(task.id, nextCompleted)
+                    void request
+                      .then(() => {
+                        setOptimisticCompleted((prev) => {
+                          const current = prev[task.id]
+                          if (current !== nextCompleted) {
+                            return prev
+                          }
+                          const next = { ...prev }
+                          delete next[task.id]
+                          return next
+                        })
+                      })
+                      .catch(() => {
+                        setOptimisticCompleted((prev) => {
+                          const next = { ...prev }
+                          delete next[task.id]
+                          return next
+                        })
+                      })
                   }}
                   type="checkbox"
                 />
@@ -68,7 +97,11 @@ export function TaskList({ entries, onComplete }: Readonly<TaskListProps>) {
           </article>
         )
       })}
-      {tasks.length === 0 ? <p className="rounded-lg border border-dashed border-slate-300 bg-white p-6 text-sm text-slate-500">No tasks yet.</p> : null}
+      {tasks.length === 0 ? (
+        <p className="rounded-lg border border-dashed border-slate-300 bg-white p-6 text-sm text-slate-500">
+          No tasks yet.
+        </p>
+      ) : null}
     </div>
   )
 }

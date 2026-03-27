@@ -23,7 +23,11 @@ def validate_task_fields(data: dict) -> dict:
     task_only_fields = ("due_date", "reminder_at", "is_completed")
     if not is_task:
         for field in task_only_fields:
-            if data.get(field) is not None:
+            if (
+                field in data
+                and data[field] is not None
+                and not (field == "is_completed" and data[field] is False)
+            ):
                 raise AppException(
                     code="invalid_task_field",
                     message=f"{field} is only allowed for task entries",

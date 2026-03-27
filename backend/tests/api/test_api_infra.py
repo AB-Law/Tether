@@ -130,10 +130,12 @@ async def test_health_and_simple_stubs():
     original_validate = almanac.AlmanacEntryResponse.model_validate
     almanac.almanac_service.list_entries = almanac_service
     almanac.AlmanacEntryResponse.model_validate = staticmethod(almanac_response)
-    listed = await almanac.list_entries(current_user=user, db=db)
-    assert listed.meta.total == 0
-    almanac.almanac_service.list_entries = original_service
-    almanac.AlmanacEntryResponse.model_validate = original_validate
+    try:
+        listed = await almanac.list_entries(current_user=user, db=db)
+        assert listed.meta.total == 0
+    finally:
+        almanac.almanac_service.list_entries = original_service
+        almanac.AlmanacEntryResponse.model_validate = original_validate
     assert await journal.journal_stub() == {"status": "not_implemented"}
     assert await health.healthcheck() == {"status": "ok"}
     session = SimpleNamespace(execute=AsyncMock(return_value=None))

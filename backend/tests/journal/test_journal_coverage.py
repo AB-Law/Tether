@@ -228,6 +228,25 @@ async def test_journal_repository_coverage():
 
 
 @pytest.mark.asyncio
+async def test_journal_repository_non_search_order_branch():
+    uid = uuid4()
+    entry = SimpleNamespace(
+        id=uuid4(),
+        user_id=uid,
+        entry_date=datetime.now(UTC).date(),
+    )
+    rows, total = await journal_repository.list_entries(
+        uid,
+        {},
+        1,
+        20,
+        FakeSession([ExecuteResult(one=1), ExecuteResult(rows=[entry])]),
+    )  # type: ignore[arg-type]
+    assert total == 1
+    assert rows == [entry]
+
+
+@pytest.mark.asyncio
 async def test_journal_service_coverage(monkeypatch):
     uid = uuid4()
     eid = uuid4()
@@ -535,7 +554,21 @@ async def test_reminder_worker_poll_loop(monkeypatch):
         reminder_type="task",
         payload={"attempt_count": 0},
     )
-    fake_session = SimpleNamespace(commit=AsyncMock(), flush=AsyncMock())
+    class _FakeSession:
+        def __init__(self) -> None:
+            self.commit = AsyncMock()
+            self.flush = AsyncMock()
+
+        def begin(self):
+            return self
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, _exc_type, _exc, _tb):
+            return False
+
+    fake_session = _FakeSession()
 
     class SessionFactory:
         def __call__(self):

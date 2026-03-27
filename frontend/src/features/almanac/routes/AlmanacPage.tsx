@@ -1,10 +1,10 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 
 import { useQuickCaptureStore } from '../../../app/store/quickCapture'
 import { EntryTypeIcon } from '../components/EntryTypeIcon'
 import { TaskList } from '../components/TaskList'
-import { useAlmanacList, useCompleteEntry } from '../hooks/useAlmanac'
+import { useAlmanacList, useCompleteEntry, useUpdateEntry } from '../hooks/useAlmanac'
 import type { EntryType } from '../types'
 
 const tabs: Array<{ id: 'all' | EntryType; label: string }> = [
@@ -18,16 +18,43 @@ const tabs: Array<{ id: 'all' | EntryType; label: string }> = [
   { id: 'random_thought', label: 'Random Thought' },
 ]
 
+function isEntryType(value: string | null): value is EntryType {
+  return tabs
+    .map((tab) => tab.id)
+    .filter((id): id is EntryType => id !== 'all')
+    .includes(value as EntryType)
+}
+
+function getEntryTypeFilter(raw: string | null): 'all' | EntryType {
+  if (raw === 'all') return 'all'
+  if (isEntryType(raw)) return raw
+  return 'all'
+}
+
 export function AlmanacPage() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const [activeTab, setActiveTab] = useState<'all' | EntryType>(
-    (searchParams.get('entry_type') as 'all' | EntryType) || 'all',
+    getEntryTypeFilter(searchParams.get('entry_type')),
   )
   const [search, setSearch] = useState(searchParams.get('search') || '')
   const [tag, setTag] = useState(searchParams.get('tag') || '')
   const { open } = useQuickCaptureStore()
-  const { mutate: completeTask } = useCompleteEntry()
+  const { mutateAsync: completeTask } = useCompleteEntry()
+  const { mutateAsync: updateTask } = useUpdateEntry()
+
+  useEffect(() => {
+    setActiveTab(getEntryTypeFilter(searchParams.get('entry_type')))
+  }, [searchParams])
+
+  const toggleTaskCompletion = async (entryId: string, isCompleted: boolean) => {
+    if (isCompleted) {
+      await completeTask(entryId)
+      return
+    }
+    await updateTask({ id: entryId, payload: { is_completed: false, completed_at: null } })
+  }
+
   const listQuery = useAlmanacList({
     entry_type: activeTab === 'all' ? undefined : activeTab,
     search: search || undefined,
@@ -36,9 +63,11 @@ export function AlmanacPage() {
   const filteredEntries = listQuery.data?.data ?? []
   const setFilterParam = (key: string, value: string | null) => {
     const next = new URLSearchParams(searchParams)
-    const hasValue = Boolean(value?.length)
-    if (hasValue) next.set(key, value ?? '')
-    else next.delete(key)
+    if (value?.length) {
+      next.set(key, value)
+    } else {
+      next.delete(key)
+    }
     setSearchParams(next)
   }
 
@@ -103,7 +132,7 @@ export function AlmanacPage() {
       </div>
 
       {activeTab === 'task' ? (
-        <TaskList entries={filteredEntries} onComplete={completeTask} />
+        <TaskList entries={filteredEntries} onComplete={toggleTaskCompletion} />
       ) : (
         <div className="space-y-4">
           {filteredEntries.map((entry) => (
@@ -130,8 +159,16 @@ export function AlmanacPage() {
               </div>
             </Link>
           ))}
-          {listQuery.isLoading ? <p className="rounded-lg border border-dashed border-slate-300 bg-white p-6 text-sm text-slate-500">Loading entries...</p> : null}
-          {filteredEntries.length === 0 ? <p className="rounded-lg border border-dashed border-slate-300 bg-white p-6 text-sm text-slate-500">No entries match this filter.</p> : null}
+          {listQuery.isLoading ? (
+            <p className="rounded-lg border border-dashed border-slate-300 bg-white p-6 text-sm text-slate-500">
+              Loading entries...
+            </p>
+          ) : null}
+          {!listQuery.isLoading && filteredEntries.length === 0 ? (
+            <p className="rounded-lg border border-dashed border-slate-300 bg-white p-6 text-sm text-slate-500">
+              No entries match this filter.
+            </p>
+          ) : null}
         </div>
       )}
     </div>

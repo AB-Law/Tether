@@ -27,38 +27,48 @@ def _set_attempt_count(reminder, count: int) -> None:
 
 async def process_due_reminders() -> None:
     async with AsyncSessionLocal() as session:
-        due = await reminder_repository.get_due(datetime.now(UTC), session, limit=BATCH_SIZE)
-        for reminder in due:
-            attempt_count = _get_attempt_count(reminder)
-            try:
-                logger.info(
-                    "Delivering in-app reminder",
-                    extra={
-                        "user_id": str(reminder.user_id),
-                        "entity_type": reminder.entity_type,
-                        "entity_id": str(reminder.entity_id),
-                        "reminder_type": reminder.reminder_type,
-                        "attempt_count": attempt_count + 1,
-                    },
+        while True:
+            async with session.begin():
+                due = await reminder_repository.get_due(
+                    datetime.now(UTC), session, limit=BATCH_SIZE
                 )
-                await reminder_repository.mark_sent(reminder, session)
-            except Exception as exc:  # pragma: no cover - defensive path
-                updated_attempts = attempt_count + 1
-                _set_attempt_count(reminder, updated_attempts)
-                if updated_attempts >= MAX_ATTEMPTS:
-                    await reminder_repository.mark_failed(reminder, str(exc), session)
-                else:
-                    # Phase 3 polling scheduler; move to durable queue in Phase 4.
-                    reminder.scheduled_for = datetime.now(UTC) + timedelta(
-                        seconds=2**updated_attempts * POLL_INTERVAL_SECONDS
-                    )
-                    reminder.status = "pending"
-                    reminder.failure_reason = str(exc)
-                    await session.flush()
-        await session.commit()
+                if not due:
+                    break
+                for reminder in due:
+                    attempt_count = _get_attempt_count(reminder)
+                    try:
+                        logger.info(
+                            "Delivering in-app reminder",
+                            extra={
+                                "user_id": str(reminder.user_id),
+                                "entity_type": reminder.entity_type,
+                                "entity_id": str(reminder.entity_id),
+                                "reminder_type": reminder.reminder_type,
+                                "attempt_count": attempt_count + 1,
+                            },
+                        )
+                        await reminder_repository.mark_sent(reminder, session)
+                    except Exception as exc:  # pragma: no cover - defensive path
+                        updated_attempts = attempt_count + 1
+                        _set_attempt_count(reminder, updated_attempts)
+                        if updated_attempts >= MAX_ATTEMPTS:
+                            await reminder_repository.mark_failed(reminder, str(exc), session)
+                        else:
+                            # Phase 3 polling scheduler; move to durable queue in Phase 4.
+                            reminder.scheduled_for = datetime.now(UTC) + timedelta(
+                                seconds=2**updated_attempts * POLL_INTERVAL_SECONDS
+                            )
+                            reminder.status = "pending"
+                            reminder.failure_reason = str(exc)
+                            await session.flush()
+                if len(due) < BATCH_SIZE:
+                    break
 
 
 async def run_poll_loop(interval_seconds: int = POLL_INTERVAL_SECONDS) -> None:
     while True:
-        await process_due_reminders()
+        try:
+            await process_due_reminders()
+        except Exception:  # pragma: no cover - defensive path
+            logger.exception("Reminder polling failed; retrying")
         await asyncio.sleep(interval_seconds)

@@ -275,6 +275,7 @@ describe('components and pages', () => {
       },
     })
     useCompleteEntry.mockReturnValue({ mutate: vi.fn() })
+    useUpdateEntry.mockReturnValue({ mutateAsync: vi.fn(async () => undefined) })
     render(
       <MemoryRouter>
         <AlmanacPage />

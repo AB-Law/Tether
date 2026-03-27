@@ -12,7 +12,8 @@ async def test_reminders_requires_auth(api_client: AsyncClient) -> None:
 
 @pytest.mark.asyncio
 async def test_reminders_crud_like_flow(
-    api_client: AsyncClient, auth_headers: dict[str, str]
+    api_client: AsyncClient,
+    auth_headers: dict[str, str],
 ) -> None:
     person = await api_client.post(
         "/api/v1/people",
@@ -59,7 +60,8 @@ async def test_reminders_crud_like_flow(
 
 @pytest.mark.asyncio
 async def test_reminders_not_found_paths(
-    api_client: AsyncClient, auth_headers: dict[str, str]
+    api_client: AsyncClient,
+    auth_headers: dict[str, str],
 ) -> None:
     missing_id = "00000000-0000-0000-0000-000000000555"
     update_missing = await api_client.patch(

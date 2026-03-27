@@ -35,7 +35,10 @@ async def test_me_requires_auth_and_returns_user(api_client: AsyncClient, create
     )
     token = login.json()["access_token"]
 
-    me = await api_client.get("/api/v1/auth/me", headers={"Authorization": f"Bearer {token}"})
+    me = await api_client.get(
+        "/api/v1/auth/me",
+        headers={"Authorization": f"Bearer {token}"},
+    )
     assert me.status_code == 200
     assert me.json()["email"] == "me@example.com"
     assert me.json()["display_name"] == "Me"
@@ -51,21 +54,25 @@ async def test_refresh_rotation_flow(api_client: AsyncClient, create_user) -> No
     assert login.status_code == 200
     cookie = SimpleCookie()
     cookie.load(login.headers.get("set-cookie", ""))
+    assert "refresh_token" in cookie
     refresh_cookie = cookie["refresh_token"].value
 
     refresh = await api_client.post(
-        "/api/v1/auth/refresh", headers={"Cookie": f"refresh_token={refresh_cookie}"}
+        "/api/v1/auth/refresh",
+        headers={"Cookie": f"refresh_token={refresh_cookie}"},
     )
     assert refresh.status_code == 200
     assert refresh.json()["access_token"]
 
     rotated_cookie = SimpleCookie()
     rotated_cookie.load(refresh.headers.get("set-cookie", ""))
+    assert "refresh_token" in rotated_cookie
     rotated_refresh_cookie = rotated_cookie["refresh_token"].value
     assert rotated_refresh_cookie != refresh_cookie
 
     stale_refresh = await api_client.post(
-        "/api/v1/auth/refresh", headers={"Cookie": f"refresh_token={refresh_cookie}"}
+        "/api/v1/auth/refresh",
+        headers={"Cookie": f"refresh_token={refresh_cookie}"},
     )
     assert stale_refresh.status_code == 401
 

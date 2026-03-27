@@ -66,12 +66,11 @@ export const useUpdateEntry = () => {
 
 export const useDeleteEntry = () => {
   const queryClient = useQueryClient()
-  const navigate = useNavigate()
   return useMutation({
     mutationFn: (id: string) => deleteEntry(id),
-    onSuccess: () => {
+    onSuccess: (_data, id) => {
       void queryClient.invalidateQueries({ queryKey: ['almanac', 'list'] })
-      navigate('/almanac')
+      void queryClient.invalidateQueries({ queryKey: ['almanac', 'entry', id] })
     },
   })
 }

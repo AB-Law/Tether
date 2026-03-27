@@ -47,4 +47,5 @@ export interface AlmanacUpdatePayload {
   due_date?: string | null
   reminder_at?: string | null
   is_completed?: boolean
+  completed_at?: string | null
 }

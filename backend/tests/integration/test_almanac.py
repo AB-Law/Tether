@@ -1,14 +1,7 @@
 import pytest
 from httpx import AsyncClient
 
-
-async def _auth_for(api_client: AsyncClient, create_user, email: str) -> dict[str, str]:
-    await create_user(email=email, password="password123")
-    login = await api_client.post(
-        "/api/v1/auth/login", json={"email": email, "password": "password123"}
-    )
-    assert login.status_code == 200
-    return {"Authorization": f"Bearer {login.json()['access_token']}"}
+from tests.helpers import get_auth_headers
 
 
 @pytest.mark.asyncio
@@ -55,7 +48,10 @@ async def test_almanac_capture_crud_complete_flow(
     ids = [item["id"] for item in filtered.json()["data"]]
     assert entry_id in ids
 
-    get_entry = await api_client.get(f"/api/v1/almanac/entries/{entry_id}", headers=auth_headers)
+    get_entry = await api_client.get(
+        f"/api/v1/almanac/entries/{entry_id}",
+        headers=auth_headers,
+    )
     assert get_entry.status_code == 200
     assert get_entry.json()["title"] == "Write integration tests"
 
@@ -74,10 +70,16 @@ async def test_almanac_capture_crud_complete_flow(
     assert completed.status_code == 200
     assert completed.json()["is_completed"] is True
 
-    deleted = await api_client.delete(f"/api/v1/almanac/entries/{entry_id}", headers=auth_headers)
+    deleted = await api_client.delete(
+        f"/api/v1/almanac/entries/{entry_id}",
+        headers=auth_headers,
+    )
     assert deleted.status_code == 204
 
-    missing = await api_client.get(f"/api/v1/almanac/entries/{entry_id}", headers=auth_headers)
+    missing = await api_client.get(
+        f"/api/v1/almanac/entries/{entry_id}",
+        headers=auth_headers,
+    )
     assert missing.status_code in (403, 404)
 
     captured_get = await api_client.get(
@@ -89,8 +91,16 @@ async def test_almanac_capture_crud_complete_flow(
 
 @pytest.mark.asyncio
 async def test_almanac_validation_and_forbidden(api_client: AsyncClient, create_user) -> None:
-    user1 = await _auth_for(api_client, create_user, "almanac-owner@example.com")
-    user2 = await _auth_for(api_client, create_user, "almanac-other@example.com")
+    user1 = await get_auth_headers(
+        api_client,
+        create_user,
+        "almanac-owner@example.com",
+    )
+    user2 = await get_auth_headers(
+        api_client,
+        create_user,
+        "almanac-other@example.com",
+    )
 
     invalid = await api_client.post(
         "/api/v1/almanac/entries",
@@ -113,5 +123,8 @@ async def test_almanac_validation_and_forbidden(api_client: AsyncClient, create_
     )
     assert complete_non_task.status_code == 422
 
-    forbidden_read = await api_client.get(f"/api/v1/almanac/entries/{non_task_id}", headers=user2)
+    forbidden_read = await api_client.get(
+        f"/api/v1/almanac/entries/{non_task_id}",
+        headers=user2,
+    )
     assert forbidden_read.status_code == 403

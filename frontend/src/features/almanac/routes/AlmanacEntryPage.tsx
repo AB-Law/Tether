@@ -12,6 +12,7 @@ type AlmanacEntryDraft = {
   tags: string
   due_date: string
   reminder_at: string
+  reminder_offset: string
   is_completed: boolean
 }
 
@@ -35,7 +36,13 @@ const emptyDraft: AlmanacEntryDraft = {
   tags: '',
   due_date: '',
   reminder_at: '',
+  reminder_offset: 'Z',
   is_completed: false,
+}
+
+function getReminderOffset(reminderAt: string): string {
+  const timezoneMatch = reminderAt.match(/([+-]\d{2}:\d{2}|Z)$/)
+  return timezoneMatch?.[0] ?? 'Z'
 }
 
 function toDraft(entry: AlmanacEntryRecord): AlmanacEntryDraft {
@@ -46,6 +53,7 @@ function toDraft(entry: AlmanacEntryRecord): AlmanacEntryDraft {
     tags: entry.tags.map((tag) => tag.name).join(', '),
     due_date: entry.due_date ?? '',
     reminder_at: entry.reminder_at ? entry.reminder_at.slice(0, 16) : '',
+    reminder_offset: entry.reminder_at ? getReminderOffset(entry.reminder_at) : 'Z',
     is_completed: Boolean(entry.is_completed),
   }
 }
@@ -67,7 +75,8 @@ function buildPayload(entryId: string, draft: AlmanacEntryDraft) {
       entry_type: draft.entry_type,
       tag_names: buildTagList(draft.tags),
       due_date: isTask ? draft.due_date || null : null,
-      reminder_at: isTask && draft.reminder_at ? new Date(draft.reminder_at).toISOString() : null,
+      reminder_at:
+        isTask && draft.reminder_at ? `${draft.reminder_at}${draft.reminder_offset}` : null,
       is_completed: isTask ? draft.is_completed : undefined,
     },
   }
@@ -276,7 +285,7 @@ type AlmanacEntryDeleteDialogProps = Readonly<{
   onDelete: () => void
 }>
 
-function AlmanacEntryDeleteDialog(props: AlmanacEntryDeleteDialogProps) {
+export function AlmanacEntryDeleteDialog(props: AlmanacEntryDeleteDialogProps) {
   const { isVisible, onCancel, isDeleting, onDelete } = props
   if (!isVisible) {
     return null
@@ -317,6 +326,26 @@ export function AlmanacEntryPage() {
   const [draft, setDraft] = useState<AlmanacEntryDraft>(emptyDraft)
 
   if (entryQuery.isLoading) return <p className="text-sm text-slate-500">Loading entry...</p>
+  if (entryQuery.isError) {
+    const message =
+      entryQuery.error instanceof Error
+        ? entryQuery.error.message
+        : 'Please retry.'
+    return (
+      <div className="rounded-lg border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">
+        <p>Failed to load this almanac entry: {message}</p>
+        <button
+          className="mt-2 rounded-lg border border-rose-200 px-3 py-1.5 font-medium"
+          onClick={() => {
+            void entryQuery.refetch()
+          }}
+          type="button"
+        >
+          Retry
+        </button>
+      </div>
+    )
+  }
   if (!entry) return <p className="text-sm text-slate-500">Almanac entry not found.</p>
 
   const toggleEditMode = () => {

@@ -189,23 +189,3 @@ async def test_almanac_repository_and_service_paths(monkeypatch):
     with pytest.raises(AppException):
         await almanac_service.complete_entry(eid, uid, db)
 
-
-@pytest.mark.asyncio
-async def test_journal_repository_non_search_order_branch():
-    from app.repositories import journal_repository
-
-    uid = uuid4()
-    entry = SimpleNamespace(
-        id=uuid4(),
-        user_id=uid,
-        entry_date=datetime.now(UTC).date(),
-    )
-    rows, total = await journal_repository.list_entries(
-        uid,
-        {},
-        1,
-        20,
-        FakeSession([ExecuteResult(one=1), ExecuteResult(rows=[entry])]),
-    )  # type: ignore[arg-type]
-    assert total == 1
-    assert rows == [entry]
