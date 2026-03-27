@@ -32,7 +32,10 @@ async def schedule_nudge(person_id: UUID, user_id: UUID, db: AsyncSession) -> No
             "scheduled_for": scheduled_for,
             "status": "pending",
             "channel": "in_app",
-            "payload": {"person_id": str(person_id)},
+            "payload": {
+                "person_id": str(person_id),
+                "person_name": getattr(person, "name", "Connection"),
+            },
         },
         user_id=user_id,
         db=db,

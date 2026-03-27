@@ -157,7 +157,7 @@ async def test_moments_people_reminders_endpoints(monkeypatch):
     pending_rem = SimpleNamespace(id=rid)
     monkeypatch.setattr(
         reminders.reminder_repository,
-        "list_pending_for_user",
+        "list_for_user",
         AsyncMock(return_value=[pending_rem]),
     )
     monkeypatch.setattr(

@@ -1,0 +1,51 @@
+import type { ReminderItem } from '../types'
+
+export const mockReminders: ReminderItem[] = [
+  {
+    id: 'r-1',
+    type: 'nudge',
+    status: 'pending',
+    title: 'Reach out to Sarah',
+    personId: 'person-sarah',
+    personName: 'Sarah Chen',
+    nudgeText: "What's on your mind about Sarah? Ask how the design sprint has been going for her this week.",
+    scheduledLabel: 'Today, 6:00 PM',
+    lastTalkedLabel: 'Last talked 14 days ago',
+  },
+  {
+    id: 'r-2',
+    type: 'general',
+    status: 'pending',
+    title: 'Buy anniversary gift',
+    scheduledLabel: 'Tomorrow, 10:00 AM',
+  },
+  {
+    id: 'r-3',
+    type: 'nudge',
+    status: 'snoozed',
+    title: 'Check in with Marcus',
+    personId: 'person-marcus',
+    personName: 'Marcus Lee',
+    nudgeText: 'Time to reach out to Marcus.',
+    scheduledLabel: 'Snoozed to Mar 31, 9:00 AM',
+    lastTalkedLabel: 'Last talked 24 days ago',
+  },
+  {
+    id: 'r-4',
+    type: 'nudge',
+    status: 'sent',
+    title: 'Follow up with Priya',
+    personId: 'person-priya',
+    personName: 'Priya Kumar',
+    nudgeText: "What's on your mind about Priya? Ask if she's still planning that weekend trip.",
+    scheduledLabel: 'Sent on Mar 25',
+    acknowledged: true,
+  },
+  {
+    id: 'r-5',
+    type: 'general',
+    status: 'sent',
+    title: 'Book dentist appointment',
+    scheduledLabel: 'Sent on Mar 24',
+  },
+]

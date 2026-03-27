@@ -16,6 +16,9 @@ const useUpdateEntry = vi.fn()
 const useDeleteEntry = vi.fn()
 const useCapture = vi.fn()
 const useCreateEntry = vi.fn()
+const useRemindersList = vi.fn()
+const useSnoozeReminder = vi.fn()
+const useUpdateReminder = vi.fn()
 const tokenSet = vi.fn()
 
 vi.mock('../features/auth/hooks/useCurrentUser', () => ({ useCurrentUser }))
@@ -32,10 +35,18 @@ vi.mock('../features/almanac/hooks/useAlmanac', () => ({
   useCreateEntry,
 }))
 vi.mock('../lib/api-client', () => ({ tokenStore: { set: tokenSet } }))
+vi.mock('../features/reminders/hooks/useReminders', () => ({
+  useRemindersList,
+  useSnoozeReminder,
+  useUpdateReminder,
+}))
 
 describe('components and pages', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    useRemindersList.mockReturnValue({ data: [], isLoading: false })
+    useSnoozeReminder.mockReturnValue({ mutate: vi.fn() })
+    useUpdateReminder.mockReturnValue({ mutate: vi.fn() })
   })
 
   it('renders warmth badge tones', async () => {
@@ -217,7 +228,7 @@ describe('components and pages', () => {
   it('shell, not found, and placeholder render expected elements', async () => {
     const { AppShell } = await import('../pages/app-shell')
     const { NotFoundPage } = await import('../pages/not-found')
-    const { RoutePlaceholder } = await import('../components/layout/route-placeholder')
+    const { RemindersPage } = await import('../features/reminders/routes/RemindersPage')
     const assign = vi.fn()
     vi.stubGlobal('location', { assign })
 
@@ -239,11 +250,11 @@ describe('components and pages', () => {
     render(
       <MemoryRouter>
         <NotFoundPage />
-        <RoutePlaceholder label="Journal" />
+        <RemindersPage />
       </MemoryRouter>,
     )
     expect(screen.getByText('Page not found')).toBeInTheDocument()
-    expect(screen.getByText('Journal placeholder')).toBeInTheDocument()
+    expect(screen.getAllByText('Reminders').length).toBeGreaterThan(0)
   })
 
   it('almanac pages and quick capture render with API-backed hooks', async () => {

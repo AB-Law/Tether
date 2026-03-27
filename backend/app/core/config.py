@@ -16,6 +16,10 @@ class Settings(BaseSettings):
     # When set, Anthropic API clients should use this base URL.
     # Example: LM Studio local Anthropic-compatible server.
     anthropic_base_url: str | None = None
+    ai_provider: str = "anthropic"
+    ai_model: str = "claude-3-5-sonnet-latest"
+    ai_timeout_seconds: int = 60
+    digest_cron_schedule: str = "0 7 * * MON"
     access_token_ttl_minutes: int = 15
     refresh_token_ttl_days: int = 30
     cors_origins: list[str] = Field(default_factory=lambda: ["http://localhost:5173"])

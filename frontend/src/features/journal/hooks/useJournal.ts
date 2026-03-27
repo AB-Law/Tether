@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { createEntry } from '../api/create-entry'
 import { deleteEntry } from '../api/delete-entry'
 import { getAiRuns } from '../api/get-ai-runs'
+import { getDigest } from '../api/get-digest'
 import { getDailyPrompt } from '../api/get-daily-prompt'
 import { getEntry } from '../api/get-entry'
 import { listEntries } from '../api/list-entries'
@@ -113,4 +114,11 @@ export const useTags = () =>
   useQuery({
     queryKey: ['journal', 'tags'],
     queryFn: listTags,
+  })
+
+export const useLatestDigest = () =>
+  useQuery({
+    queryKey: ['journal', 'latest-digest'],
+    queryFn: getDigest,
+    staleTime: 60 * 60 * 1000,
   })

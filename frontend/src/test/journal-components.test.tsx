@@ -13,6 +13,7 @@ const useDeleteEntry = vi.fn()
 const useReflect = vi.fn()
 const useStreamReflect = vi.fn()
 const useGetAiRuns = vi.fn()
+const useLatestDigest = vi.fn()
 const usePeopleList = vi.fn()
 
 vi.mock('../features/journal/hooks/useJournal', () => ({
@@ -26,6 +27,7 @@ vi.mock('../features/journal/hooks/useJournal', () => ({
   useReflect,
   useStreamReflect,
   useGetAiRuns,
+  useLatestDigest,
 }))
 
 vi.mock('../features/people/hooks/usePeople', () => ({
@@ -50,6 +52,7 @@ describe('journal components and routes', () => {
     useReflect.mockReturnValue({ mutate: vi.fn(), isPending: false })
     useStreamReflect.mockReturnValue({ isStreaming: false, streamedText: '', start: vi.fn() })
     useGetAiRuns.mockReturnValue({ data: [] })
+    useLatestDigest.mockReturnValue({ data: null, isLoading: false })
   })
 
   it('renders journal list page', async () => {
@@ -211,6 +214,42 @@ describe('journal components and routes', () => {
     if (!writeButton) throw new Error('Write Entry button not found')
     await user.click(writeButton)
     expect(screen.queryAllByText('Prompt').length).toBe(0)
+  })
+
+  it('daily prompt banner shows personalised label for ai source', async () => {
+    const { DailyPromptBanner } = await import('../features/journal/components/DailyPromptBanner')
+    useDailyPrompt.mockReturnValueOnce({
+      data: { prompt: 'What felt unexpectedly meaningful today?', source: 'ai' },
+      isLoading: false,
+    })
+    render(<DailyPromptBanner />)
+    expect(screen.getByText('Personalised for you')).toBeInTheDocument()
+  })
+
+  it('weekly digest card expands and collapses', async () => {
+    const { WeeklyDigestCard } = await import('../features/journal/components/WeeklyDigestCard')
+    const user = userEvent.setup()
+    render(
+      <WeeklyDigestCard
+        digestText={
+          'You maintained steady momentum this week and showed up for yourself.\n\nYou also reached out to two people who seem to ground you.'
+        }
+      />,
+    )
+
+    expect(screen.queryByText('You also reached out to two people who seem to ground you.')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /Read full digest/i }))
+    expect(screen.getByText('You also reached out to two people who seem to ground you.')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /Show less/i }))
+    expect(screen.queryByText('You also reached out to two people who seem to ground you.')).not.toBeInTheDocument()
+  })
+
+  it('weekly digest card renders loading and empty states', async () => {
+    const { WeeklyDigestCard } = await import('../features/journal/components/WeeklyDigestCard')
+    const { rerender } = render(<WeeklyDigestCard isLoading />)
+    expect(screen.getByText('Loading weekly digest...')).toBeInTheDocument()
+    rerender(<WeeklyDigestCard isEmpty />)
+    expect(screen.getByText('Your first weekly digest will appear after the end of the week.')).toBeInTheDocument()
   })
 
   it('tag input supports suggestion click and removal', async () => {

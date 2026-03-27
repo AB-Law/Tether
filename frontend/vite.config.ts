@@ -23,6 +23,8 @@ export default defineConfig({
         'src/test/**',
         'src/features/people/types.ts',
         'src/features/journal/types.ts',
+        'src/features/almanac/types.ts',
+        'src/features/reminders/types.ts',
         'src/features/journal/components/AiReflectionPanel.tsx',
         'src/features/journal/components/DailyPromptBanner.tsx',
         'src/features/journal/components/PeopleMentionInput.tsx',
