@@ -1,3 +1,4 @@
+import asyncio
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock
 
@@ -11,6 +12,7 @@ from starlette.responses import Response
 from app.api import cors_diagnostics, deps, error_handlers
 from app.api.v1.endpoints import almanac, health, journal
 from app.core import exceptions
+from app.main import lifespan
 
 
 @pytest.mark.asyncio
@@ -66,7 +68,7 @@ async def test_cors_middleware_dispatch_and_origin_check(monkeypatch):
             "method": "OPTIONS",
             "path": "/x",
             "headers": [
-                (b"origin", b"http://localhost:5173"),
+                (b"origin", b"https://localhost:5173"),
                 (b"access-control-request-method", b"GET"),
             ],
         }
@@ -84,7 +86,7 @@ async def test_cors_middleware_dispatch_and_origin_check(monkeypatch):
             "method": "OPTIONS",
             "path": "/x",
             "headers": [
-                (b"origin", b"http://evil.com"),
+                (b"origin", b"https://evil.com"),
                 (b"access-control-request-method", b"GET"),
                 (b"access-control-request-headers", b"X-Thing"),
             ],
@@ -97,29 +99,82 @@ async def test_cors_middleware_dispatch_and_origin_check(monkeypatch):
         non_preflight, AsyncMock(return_value=Response(status_code=204))
     )
     assert res.status_code == 204
-    monkeypatch.setattr(cors_diagnostics.settings, "cors_origins", ["http://ok"])
+    monkeypatch.setattr(cors_diagnostics.settings, "cors_origins", ["https://ok"])
     monkeypatch.setattr(
         cors_diagnostics.settings, "cors_origin_regex", r"^https://.*\.example\.com$"
     )
     assert cors_diagnostics.CorsDiagnosticsMiddleware._is_origin_allowed(None) is False
-    assert cors_diagnostics.CorsDiagnosticsMiddleware._is_origin_allowed("http://ok") is True
+    assert cors_diagnostics.CorsDiagnosticsMiddleware._is_origin_allowed("https://ok") is True
     assert (
         cors_diagnostics.CorsDiagnosticsMiddleware._is_origin_allowed("https://a.example.com")
         is True
     )
-    assert cors_diagnostics.CorsDiagnosticsMiddleware._is_origin_allowed("http://bad") is False
+    assert cors_diagnostics.CorsDiagnosticsMiddleware._is_origin_allowed("https://bad") is False
     monkeypatch.setattr(cors_diagnostics.settings, "cors_origin_regex", None)
     assert (
-        cors_diagnostics.CorsDiagnosticsMiddleware._is_origin_allowed("http://still-bad") is False
+        cors_diagnostics.CorsDiagnosticsMiddleware._is_origin_allowed("https://still-bad") is False
     )
 
 
 @pytest.mark.asyncio
 async def test_health_and_simple_stubs():
-    assert await almanac.almanac_stub() == {"status": "not_implemented"}
+    user = SimpleNamespace(id="u1")
+    db = SimpleNamespace()
+    monkey_result = {"data": [], "meta": {"page": 1, "page_size": 20, "total": 0}}
+    almanac_service = AsyncMock(return_value=monkey_result)
+
+    def almanac_response(entry):
+        return entry
+
+    original_service = almanac.almanac_service.list_entries
+    original_validate = almanac.AlmanacEntryResponse.model_validate
+    almanac.almanac_service.list_entries = almanac_service
+    almanac.AlmanacEntryResponse.model_validate = staticmethod(almanac_response)
+    try:
+        listed = await almanac.list_entries(current_user=user, db=db)
+        assert listed.meta.total == 0
+    finally:
+        almanac.almanac_service.list_entries = original_service
+        almanac.AlmanacEntryResponse.model_validate = original_validate
     assert await journal.journal_stub() == {"status": "not_implemented"}
     assert await health.healthcheck() == {"status": "ok"}
     session = SimpleNamespace(execute=AsyncMock(return_value=None))
     assert (await health.readiness_check(session)).status_code == 200  # type: ignore[arg-type]
     session_bad = SimpleNamespace(execute=AsyncMock(side_effect=RuntimeError("db down")))
     assert (await health.readiness_check(session_bad)).status_code == 503  # type: ignore[arg-type]
+
+
+@pytest.mark.asyncio
+async def test_main_lifespan_covers_poller_shutdown(monkeypatch):
+    fake_task = SimpleNamespace(cancel=Mock())
+
+    async def _awaitable_task():
+        await asyncio.sleep(0)
+
+    class _Task:
+        def cancel(self):
+            return fake_task.cancel()
+
+        def __await__(self):
+            return _awaitable_task().__await__()
+
+    monkeypatch.setattr("app.main.os.getenv", lambda _key: "")
+    ctx = lifespan(FastAPI())
+    await ctx.__aenter__()
+    await ctx.__aexit__(None, None, None)
+
+    async def fake_poll_loop():
+        await asyncio.sleep(0)
+
+    def fake_create_task(coro):
+        coro.close()
+        return _Task()
+
+    monkeypatch.setattr("app.main.os.getenv", lambda _key: None)
+    monkeypatch.setattr("app.main.settings.app_env", "development")
+    monkeypatch.setattr("app.main.run_poll_loop", fake_poll_loop)
+    monkeypatch.setattr("app.main.asyncio.create_task", fake_create_task)
+    ctx_with_task = lifespan(FastAPI())
+    await ctx_with_task.__aenter__()
+    await ctx_with_task.__aexit__(None, None, None)
+    fake_task.cancel.assert_called_once()

@@ -38,6 +38,7 @@ app/domain/people/rules.py
 app/domain/reminders/__init__.py
 app/domain/reminders/rules.py
 app/models/__init__.py
+app/models/almanac_entry.py
 app/models/journal_ai_run.py
 app/models/journal_entry.py
 app/models/moment.py
@@ -48,6 +49,7 @@ app/models/reminder.py
 app/models/tag.py
 app/models/user.py
 app/repositories/__init__.py
+app/repositories/almanac_repository.py
 app/repositories/journal_repository.py
 app/repositories/moment_repository.py
 app/repositories/person_repository.py
@@ -55,6 +57,7 @@ app/repositories/reminder_repository.py
 app/repositories/tag_repository.py
 app/repositories/user_repository.py
 app/schemas/__init__.py
+app/schemas/almanac.py
 app/schemas/auth.py
 app/schemas/common.py
 app/schemas/journal.py
@@ -62,6 +65,7 @@ app/schemas/moments.py
 app/schemas/people.py
 app/schemas/reminders.py
 app/services/__init__.py
+app/services/almanac_service.py
 app/services/auth_service.py
 app/services/daily_prompt_service.py
 app/services/journal_ai_service.py

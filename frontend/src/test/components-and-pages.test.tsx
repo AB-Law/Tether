@@ -1,3 +1,4 @@
+import React from 'react'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
@@ -8,12 +9,28 @@ const useLogin = vi.fn()
 const useDriftingAway = vi.fn()
 const useMoments = vi.fn()
 const useCreateMoment = vi.fn()
+const useAlmanacList = vi.fn()
+const useCompleteEntry = vi.fn()
+const useAlmanacEntry = vi.fn()
+const useUpdateEntry = vi.fn()
+const useDeleteEntry = vi.fn()
+const useCapture = vi.fn()
+const useCreateEntry = vi.fn()
 const tokenSet = vi.fn()
 
 vi.mock('../features/auth/hooks/useCurrentUser', () => ({ useCurrentUser }))
 vi.mock('../features/auth/hooks/useLogin', () => ({ useLogin }))
 vi.mock('../features/people/hooks/usePeople', () => ({ useDriftingAway }))
 vi.mock('../features/moments/hooks/useMoments', () => ({ useMoments, useCreateMoment }))
+vi.mock('../features/almanac/hooks/useAlmanac', () => ({
+  useAlmanacList,
+  useCompleteEntry,
+  useAlmanacEntry,
+  useUpdateEntry,
+  useDeleteEntry,
+  useCapture,
+  useCreateEntry,
+}))
 vi.mock('../lib/api-client', () => ({ tokenStore: { set: tokenSet } }))
 
 describe('components and pages', () => {
@@ -123,8 +140,13 @@ describe('components and pages', () => {
 
     render(<MomentTimeline personId="p1" />)
     expect(screen.getByText('Lunch')).toBeInTheDocument()
-    await user.type(screen.getAllByPlaceholderText('Title').at(-1)!, 'Quick note')
-    await user.click(screen.getAllByRole('button', { name: 'Save moment' }).at(-1)!)
+    const latestTitleInput = screen.getAllByPlaceholderText('Title').at(-1)
+    if (!latestTitleInput) throw new Error('Expected latest title input to exist')
+    await user.type(latestTitleInput, 'Quick note')
+
+    const latestSaveMomentButton = screen.getAllByRole('button', { name: 'Save moment' }).at(-1)
+    if (!latestSaveMomentButton) throw new Error('Expected latest save moment button to exist')
+    await user.click(latestSaveMomentButton)
     expect(mutateAsync).toHaveBeenCalled()
 
     useMoments.mockReturnValueOnce({ isLoading: true, data: [] })
@@ -176,14 +198,15 @@ describe('components and pages', () => {
   it('login page submits credentials and shows error/pending states', async () => {
     const mutateAsync = vi.fn(async () => undefined)
     const user = userEvent.setup()
+    const loginPassword = Array.from({ length: 10 }, () => String.fromCodePoint(97 + Math.floor(Math.random() * 26))).join('')
     const { LoginPage } = await import('../features/auth/routes/LoginPage')
 
     useLogin.mockReturnValue({ mutateAsync, isError: false, isPending: false })
     const { rerender } = render(<LoginPage />)
     await user.type(screen.getByPlaceholderText('alex@example.com'), 'a@b.com')
-    await user.type(screen.getByPlaceholderText('••••••••'), 'secret')
+    await user.type(screen.getByPlaceholderText('••••••••'), loginPassword)
     await user.click(screen.getByRole('button', { name: 'Sign In' }))
-    expect(mutateAsync).toHaveBeenCalledWith({ email: 'a@b.com', password: 'secret' })
+    expect(mutateAsync).toHaveBeenCalledWith({ email: 'a@b.com', password: loginPassword })
 
     useLogin.mockReturnValue({ mutateAsync, isError: true, isPending: true })
     rerender(<LoginPage />)
@@ -221,5 +244,76 @@ describe('components and pages', () => {
     )
     expect(screen.getByText('Page not found')).toBeInTheDocument()
     expect(screen.getByText('Journal placeholder')).toBeInTheDocument()
+  })
+
+  it('almanac pages and quick capture render with API-backed hooks', async () => {
+    const { AlmanacPage } = await import('../features/almanac/routes/AlmanacPage')
+    const { AlmanacEntryPage } = await import('../features/almanac/routes/AlmanacEntryPage')
+    const { QuickCapturePanel } = await import('../features/almanac/components/QuickCapturePanel')
+
+    useAlmanacList.mockReturnValue({
+      isLoading: false,
+      data: {
+        data: [
+          {
+            id: 'a1',
+            user_id: 'u1',
+            entry_type: 'task',
+            title: 'Book dinner',
+            body: 'Reserve table',
+            due_date: '2026-03-28',
+            reminder_at: null,
+            is_completed: false,
+            completed_at: null,
+            source: 'manual',
+            created_at: '2026-03-01T00:00:00Z',
+            updated_at: '2026-03-01T00:00:00Z',
+            tags: [{ id: 't1', name: 'life' }],
+          },
+        ],
+        meta: { page: 1, page_size: 20, total: 1 },
+      },
+    })
+    useCompleteEntry.mockReturnValue({ mutate: vi.fn() })
+    useUpdateEntry.mockReturnValue({ mutateAsync: vi.fn(async () => undefined) })
+    render(
+      <MemoryRouter>
+        <AlmanacPage />
+      </MemoryRouter>,
+    )
+    expect(screen.getAllByText('Almanac').length).toBeGreaterThan(0)
+    expect(screen.getByText('Book dinner')).toBeInTheDocument()
+
+    useAlmanacEntry.mockReturnValue({
+      isLoading: false,
+      data: {
+        id: 'a1',
+        user_id: 'u1',
+        entry_type: 'task',
+        title: 'Book dinner',
+        body: 'Reserve table',
+        due_date: '2026-03-28',
+        reminder_at: null,
+        is_completed: false,
+        completed_at: null,
+        source: 'manual',
+        created_at: '2026-03-01T00:00:00Z',
+        updated_at: '2026-03-01T00:00:00Z',
+        tags: [{ id: 't1', name: 'life' }],
+      },
+    })
+    useUpdateEntry.mockReturnValue({ mutateAsync: vi.fn(async () => undefined) })
+    useDeleteEntry.mockReturnValue({ mutateAsync: vi.fn(async () => undefined) })
+    render(
+      <MemoryRouter initialEntries={['/almanac/a1']}>
+        <Routes>
+          <Route path="/almanac/:entryId" element={<AlmanacEntryPage />} />
+        </Routes>
+      </MemoryRouter>,
+    )
+    expect(screen.getAllByText('Book dinner').length).toBeGreaterThan(0)
+
+    useCapture.mockReturnValue({ mutateAsync: vi.fn(async () => undefined), isPending: false })
+    render(<QuickCapturePanel />)
   })
 })

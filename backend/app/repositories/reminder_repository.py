@@ -23,8 +23,16 @@ async def list_pending_for_user(user_id: UUID, db: AsyncSession) -> list[Reminde
     return (await db.execute(stmt)).scalars().all()
 
 
-async def get_due(now: datetime, db: AsyncSession) -> list[Reminder]:
-    stmt = select(Reminder).where(Reminder.status == "pending", Reminder.scheduled_for <= now)
+async def get_due(now: datetime, db: AsyncSession, limit: int = 50) -> list[Reminder]:
+    if limit <= 0:
+        raise ValueError("limit must be greater than zero")
+    stmt = (
+        select(Reminder)
+        .where(Reminder.status == "pending", Reminder.scheduled_for <= now)
+        .order_by(Reminder.scheduled_for.asc(), Reminder.id.asc())
+        .with_for_update(skip_locked=True)
+        .limit(limit)
+    )
     return (await db.execute(stmt)).scalars().all()
 
 

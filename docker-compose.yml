@@ -19,13 +19,13 @@ services:
     build:
       context: ./backend
     working_dir: /app
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    command: sh -c "alembic upgrade head && exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
     volumes:
       - ./backend:/app
     env_file:
       - .env
     environment:
-      DATABASE_URL: postgresql+asyncpg://tether:tether@postgres:5432/tether
+      DATABASE_URL: postgresql+asyncpg://tether:${POSTGRES_PASSWORD:-tether}@postgres:5432/tether
     depends_on:
       postgres:
         condition: service_healthy

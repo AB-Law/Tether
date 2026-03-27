@@ -8,7 +8,16 @@ ENV PYTHONUNBUFFERED=1
 COPY pyproject.toml /app/pyproject.toml
 RUN pip install --no-cache-dir --upgrade pip && pip install --no-cache-dir -e .[dev]
 
-COPY . /app
+COPY alembic /app/alembic
+COPY app /app/app
+COPY scripts /app/scripts
+COPY alembic.ini /app/alembic.ini
+
+RUN groupadd --system app \
+    && useradd --system --gid app app \
+    && chmod +x /app/scripts/start-api.sh \
+    && chown -R app:app /app
+USER app
 
 EXPOSE 8000
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["/app/scripts/start-api.sh"]

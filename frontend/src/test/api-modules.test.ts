@@ -220,4 +220,43 @@ describe('api modules', () => {
     expect(onChunk).not.toHaveBeenCalled()
     expect(onError).toHaveBeenCalled()
   })
+
+  it('almanac endpoints proxy through apiClient', async () => {
+    apiClientMock.get.mockResolvedValueOnce({ data: { data: [], meta: { page: 1, page_size: 20, total: 0 } } })
+    apiClientMock.get.mockResolvedValueOnce({ data: { id: 'a1' } })
+    apiClientMock.post.mockResolvedValueOnce({ data: { id: 'a2' } })
+    apiClientMock.post.mockResolvedValueOnce({ data: { id: 'a3' } })
+    apiClientMock.patch.mockResolvedValueOnce({ data: { id: 'a4' } })
+    apiClientMock.post.mockResolvedValueOnce({ data: { id: 'a5' } })
+    apiClientMock.delete.mockResolvedValueOnce({})
+
+    const { listEntries } = await import('../features/almanac/api/list-entries')
+    const { getEntry } = await import('../features/almanac/api/get-entry')
+    const { createEntry } = await import('../features/almanac/api/create-entry')
+    const { capture } = await import('../features/almanac/api/capture')
+    const { updateEntry } = await import('../features/almanac/api/update-entry')
+    const { completeEntry } = await import('../features/almanac/api/complete-entry')
+    const { deleteEntry } = await import('../features/almanac/api/delete-entry')
+
+    await listEntries({ search: 'idea', entry_type: 'idea' })
+    await getEntry('a1')
+    await createEntry({ entry_type: 'idea', title: 'Idea' })
+    await capture({ title: 'Quick' })
+    await updateEntry('a1', { title: 'Updated' })
+    await completeEntry('a1')
+    await deleteEntry('a1')
+
+    expect(apiClientMock.get).toHaveBeenCalledWith('/api/v1/almanac/entries', {
+      params: { search: 'idea', entry_type: 'idea' },
+    })
+    expect(apiClientMock.get).toHaveBeenCalledWith('/api/v1/almanac/entries/a1')
+    expect(apiClientMock.post).toHaveBeenCalledWith('/api/v1/almanac/entries', {
+      entry_type: 'idea',
+      title: 'Idea',
+    })
+    expect(apiClientMock.post).toHaveBeenCalledWith('/api/v1/almanac/capture', { title: 'Quick' })
+    expect(apiClientMock.patch).toHaveBeenCalledWith('/api/v1/almanac/entries/a1', { title: 'Updated' })
+    expect(apiClientMock.post).toHaveBeenCalledWith('/api/v1/almanac/entries/a1/complete')
+    expect(apiClientMock.delete).toHaveBeenCalledWith('/api/v1/almanac/entries/a1')
+  })
 })

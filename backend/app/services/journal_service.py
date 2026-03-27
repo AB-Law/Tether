@@ -80,6 +80,9 @@ async def create_entry(data: dict, user_id: UUID, db: AsyncSession):
     person_ids = data.pop("person_ids", [])
     tag_names = data.pop("tag_names", [])
     entry = await journal_repository.create(data, user_id, db)
+    # Reload once so relationship collections are loaded before assignment.
+    # This avoids async lazy-load attempts during relationship replacement.
+    entry = await get_entry(entry.id, user_id, db)
     people = await _resolve_people(person_ids, user_id, db)
     tags = await _resolve_tags(tag_names, user_id, db)
     entry.people = people

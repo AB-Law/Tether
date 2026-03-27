@@ -17,6 +17,7 @@ async def list_entries(
     page_size: int,
     db: AsyncSession,
 ) -> tuple[list[JournalEntry], int]:
+    rank_expr = None
     stmt = select(JournalEntry).where(
         JournalEntry.user_id == user_id,
         JournalEntry.deleted_at.is_(None),
@@ -28,22 +29,21 @@ async def list_entries(
     if moods := filters.get("moods"):
         stmt = stmt.where(JournalEntry.mood.in_(moods))
     if search := filters.get("search"):
-        stmt = stmt.where(
-            func.to_tsvector("simple", func.coalesce(JournalEntry.body, "")).op("@@")(
-                func.plainto_tsquery("simple", search)
-            )
-        )
+        vector = func.to_tsvector("simple", func.coalesce(JournalEntry.body, ""))
+        query = func.plainto_tsquery("simple", search)
+        rank_expr = func.ts_rank(vector, query)
+        stmt = stmt.where(vector.op("@@")(query))
     if person_id := filters.get("person_id"):
         stmt = stmt.where(JournalEntry.people.any(id=person_id))
     if tag_name := filters.get("tag"):
         stmt = stmt.where(JournalEntry.tags.any(func.lower(Tag.name) == tag_name.lower()))
     total = (await db.execute(select(func.count()).select_from(stmt.subquery()))).scalar_one()
-    result = await db.execute(
-        stmt.options(selectinload(JournalEntry.people), selectinload(JournalEntry.tags))
-        .order_by(desc(JournalEntry.entry_date), desc(JournalEntry.id))
-        .offset((page - 1) * page_size)
-        .limit(page_size)
-    )
+    ordered_stmt = stmt.options(selectinload(JournalEntry.people), selectinload(JournalEntry.tags))
+    if rank_expr is not None:
+        ordered_stmt = ordered_stmt.order_by(desc(rank_expr), desc(JournalEntry.created_at))
+    else:
+        ordered_stmt = ordered_stmt.order_by(desc(JournalEntry.entry_date), desc(JournalEntry.id))
+    result = await db.execute(ordered_stmt.offset((page - 1) * page_size).limit(page_size))
     return result.scalars().all(), total
 
 

@@ -26,6 +26,7 @@ jobs:
       APP_ENV: test
       APP_SECRET_KEY: test-secret-key
       DATABASE_URL: postgresql+asyncpg://tether:${{ github.run_id }}@localhost:5432/tether_test
+      INTEGRATION_TEST_DATABASE_URL: postgresql+asyncpg://tether:${{ github.run_id }}@localhost:5432/tether_test
       ANTHROPIC_API_KEY: test-anthropic-key
       ACCESS_TOKEN_TTL_MINUTES: 15
       REFRESH_TOKEN_TTL_DAYS: 30

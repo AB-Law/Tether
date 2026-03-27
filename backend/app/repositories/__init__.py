@@ -1,4 +1,5 @@
 from app.repositories import (
+    almanac_repository,
     journal_repository,
     moment_repository,
     person_repository,
@@ -8,6 +9,7 @@ from app.repositories import (
 )
 
 __all__ = [
+    "almanac_repository",
     "journal_repository",
     "moment_repository",
     "person_repository",

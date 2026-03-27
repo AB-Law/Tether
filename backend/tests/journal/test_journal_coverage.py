@@ -8,14 +8,22 @@ import pytest
 from app.api.v1.endpoints import journal, tags
 from app.core.exceptions import AppException
 from app.domain.ai import prompt_builders
-from app.repositories import journal_repository, person_repository, tag_repository
+from app.domain.almanac.rules import EntryTypeEnum
+from app.repositories import (
+    almanac_repository,
+    journal_repository,
+    person_repository,
+    tag_repository,
+)
 from app.services import (
+    almanac_service,
     daily_prompt_service,
     journal_ai_service,
     journal_service,
     people_service,
     tag_service,
 )
+from app.workers import reminder_jobs
 from tests.helpers import ExecuteResult, FakeSession
 
 
@@ -220,6 +228,25 @@ async def test_journal_repository_coverage():
 
 
 @pytest.mark.asyncio
+async def test_journal_repository_non_search_order_branch():
+    uid = uuid4()
+    entry = SimpleNamespace(
+        id=uuid4(),
+        user_id=uid,
+        entry_date=datetime.now(UTC).date(),
+    )
+    rows, total = await journal_repository.list_entries(
+        uid,
+        {},
+        1,
+        20,
+        FakeSession([ExecuteResult(one=1), ExecuteResult(rows=[entry])]),
+    )  # type: ignore[arg-type]
+    assert total == 1
+    assert rows == [entry]
+
+
+@pytest.mark.asyncio
 async def test_journal_service_coverage(monkeypatch):
     uid = uuid4()
     eid = uuid4()
@@ -417,3 +444,149 @@ async def test_person_repository_get_timeline_bridge(monkeypatch):
     )
     db = SimpleNamespace()
     assert await person_repository.get_timeline(pid, uid, db) == [entry]
+
+
+@pytest.mark.asyncio
+async def test_almanac_service_and_repository_coverage(monkeypatch):
+    uid = uuid4()
+    eid = uuid4()
+    db = SimpleNamespace(flush=AsyncMock())
+    entry = SimpleNamespace(
+        id=eid,
+        user_id=uid,
+        entry_type=EntryTypeEnum.TASK.value,
+        title="T",
+        body="B",
+        due_date=None,
+        reminder_at=None,
+        is_completed=False,
+        completed_at=None,
+        tags=[],
+        created_at=datetime.now(UTC),
+    )
+
+    monkeypatch.setattr(
+        almanac_service.almanac_repository,
+        "list_entries",
+        AsyncMock(return_value=([entry], 1)),
+    )
+    listed = await almanac_service.list_entries(uid, {}, 1, 20, db)
+    assert listed["meta"].total == 1
+
+    monkeypatch.setattr(
+        almanac_service.almanac_repository, "get_by_id", AsyncMock(return_value=None)
+    )
+    monkeypatch.setattr(
+        almanac_service.almanac_repository, "get_by_id_any_user", AsyncMock(return_value=entry)
+    )
+    with pytest.raises(AppException):
+        await almanac_service.get_entry(eid, uid, db)
+
+    monkeypatch.setattr(
+        almanac_service.almanac_repository, "get_by_id", AsyncMock(return_value=entry)
+    )
+    monkeypatch.setattr(
+        almanac_service.tag_repository,
+        "get_or_create",
+        AsyncMock(return_value=SimpleNamespace(id=uuid4(), name="x")),
+    )
+    monkeypatch.setattr(
+        almanac_service.almanac_repository, "create", AsyncMock(return_value=entry)
+    )
+    monkeypatch.setattr(
+        almanac_service.reminder_repository,
+        "cancel_pending_for_entity",
+        AsyncMock(return_value=None),
+    )
+    monkeypatch.setattr(
+        almanac_service.reminder_repository, "create", AsyncMock(return_value=None)
+    )
+    created = await almanac_service.create_entry(
+        {"entry_type": EntryTypeEnum.TASK.value, "title": "x", "tag_names": ["x"]},
+        uid,
+        db,
+    )
+    assert created is entry
+
+    monkeypatch.setattr(almanac_service.almanac_repository, "update", AsyncMock(return_value=entry))
+    updated = await almanac_service.update_entry(
+        eid,
+        uid,
+        {"title": "u", "entry_type": EntryTypeEnum.TASK.value, "tag_names": ["x"]},
+        db,
+    )
+    assert updated is entry
+
+    monkeypatch.setattr(
+        almanac_service.almanac_repository, "soft_delete", AsyncMock(return_value=entry)
+    )
+    assert await almanac_service.delete_entry(eid, uid, db) is entry
+    monkeypatch.setattr(
+        almanac_service.almanac_repository, "complete", AsyncMock(return_value=entry)
+    )
+    assert await almanac_service.complete_entry(eid, uid, db) is entry
+
+    db_repo = FakeSession([ExecuteResult(one=1), ExecuteResult(rows=[entry])])
+    rows, total = await almanac_repository.list_entries(
+        uid,
+        {"entry_type": "task", "search": "x", "is_completed": False},
+        1,
+        20,
+        db_repo,
+    )  # type: ignore[arg-type]
+    assert total == 1
+    assert rows == [entry]
+    assert await almanac_repository.get_by_id(
+        eid, uid, FakeSession([ExecuteResult(one_or_none=entry)])
+    ) == entry  # type: ignore[arg-type]
+    assert await almanac_repository.get_by_id_including_deleted(
+        eid, uid, FakeSession([ExecuteResult(one_or_none=entry)])
+    ) == entry  # type: ignore[arg-type]
+
+
+@pytest.mark.asyncio
+async def test_reminder_worker_poll_loop(monkeypatch):
+    reminder = SimpleNamespace(
+        id=uuid4(),
+        user_id=uuid4(),
+        entity_type="almanac_entry",
+        entity_id=uuid4(),
+        reminder_type="task",
+        payload={"attempt_count": 0},
+    )
+    class _FakeSession:
+        def __init__(self) -> None:
+            self.commit = AsyncMock()
+            self.flush = AsyncMock()
+
+        def begin(self):
+            return self
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, _exc_type, _exc, _tb):
+            return False
+
+    fake_session = _FakeSession()
+
+    class SessionFactory:
+        def __call__(self):
+            class _Ctx:
+                async def __aenter__(self_nonlocal):
+                    return fake_session
+
+                async def __aexit__(self_nonlocal, exc_type, exc, tb):
+                    return False
+
+            return _Ctx()
+
+    monkeypatch.setattr(reminder_jobs, "AsyncSessionLocal", SessionFactory())
+    monkeypatch.setattr(
+        reminder_jobs.reminder_repository, "get_due", AsyncMock(return_value=[reminder])
+    )
+    monkeypatch.setattr(
+        reminder_jobs.reminder_repository, "mark_sent", AsyncMock(return_value=None)
+    )
+    await reminder_jobs.process_due_reminders()
+    reminder_jobs.reminder_repository.mark_sent.assert_awaited_once()  # type: ignore[attr-defined]

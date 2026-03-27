@@ -1,4 +1,5 @@
 from app.services import (
+    almanac_service,
     auth_service,
     daily_prompt_service,
     journal_ai_service,
@@ -11,6 +12,7 @@ from app.services import (
 )
 
 __all__ = [
+    "almanac_service",
     "auth_service",
     "daily_prompt_service",
     "journal_ai_service",

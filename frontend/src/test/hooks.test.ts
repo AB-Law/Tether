@@ -5,6 +5,13 @@ const useMutation = vi.fn()
 const invalidateQueries = vi.fn()
 const useQueryClient = vi.fn(() => ({ invalidateQueries }))
 const navigate = vi.fn()
+const listEntries = vi.fn(async () => ({ data: [], meta: { page: 1, page_size: 20, total: 0 } }))
+const getEntry = vi.fn(async () => ({ id: 'a1' }))
+const createEntry = vi.fn(async () => ({ id: 'a1' }))
+const completeEntry = vi.fn(async () => ({ id: 'a1' }))
+const updateEntry = vi.fn(async () => ({ id: 'a1' }))
+const deleteEntry = vi.fn(async () => undefined)
+const capture = vi.fn(async () => ({ id: 'c1' }))
 const streamReflectMock = vi.fn(() => () => undefined)
 
 vi.mock('@tanstack/react-query', () => ({
@@ -16,6 +23,13 @@ vi.mock('@tanstack/react-query', () => ({
 vi.mock('react-router-dom', () => ({
   useNavigate: () => navigate,
 }))
+vi.mock('../features/almanac/api/list-entries', () => ({ listEntries }))
+vi.mock('../features/almanac/api/get-entry', () => ({ getEntry }))
+vi.mock('../features/almanac/api/create-entry', () => ({ createEntry }))
+vi.mock('../features/almanac/api/complete-entry', () => ({ completeEntry }))
+vi.mock('../features/almanac/api/update-entry', () => ({ updateEntry }))
+vi.mock('../features/almanac/api/delete-entry', () => ({ deleteEntry }))
+vi.mock('../features/almanac/api/capture', () => ({ capture }))
 
 vi.mock('../features/auth/api/login', () => ({ login: vi.fn(async (payload) => ({ access_token: payload.email })) }))
 vi.mock('../features/auth/api/me', () => ({ getCurrentUser: vi.fn(async () => ({ id: 'u1' })) }))
@@ -186,5 +200,67 @@ describe('hooks wrappers', () => {
     act(() => stopFn())
     expect(stop).toHaveBeenCalledTimes(1)
     expect(react).toBeDefined()
+  })
+
+  it('almanac hooks configure queries and mutations', async () => {
+    const hooks = await import('../features/almanac/hooks/useAlmanac')
+
+    const list = hooks.useAlmanacList({
+      entry_type: 'task',
+      search: 'plan',
+      tag: 'focus',
+      is_completed: false,
+      due_date_after: '2026-01-01',
+      due_date_before: '2026-12-31',
+    })
+    expect(list.queryKey).toEqual([
+      'almanac',
+      'list',
+      expect.objectContaining({
+        entry_type: 'task',
+        search: 'plan',
+        tag: 'focus',
+        is_completed: false,
+        due_date_after: '2026-01-01',
+        due_date_before: '2026-12-31',
+      }),
+    ])
+    await list.queryFn()
+
+    const entry = hooks.useAlmanacEntry('a1')
+    expect(entry.enabled).toBe(true)
+    await entry.queryFn()
+    expect(hooks.useAlmanacEntry('').enabled).toBe(false)
+
+    const create = hooks.useCreateEntry()
+    const created = await create.mutationFn({
+      entry_type: 'task',
+      title: 'Run',
+    })
+    expect(created).toEqual({ id: 'a1' })
+    await create.onSuccess(created)
+
+    const captureHook = hooks.useCapture()
+    const captured = await captureHook.mutationFn({ title: 'Capture', entry_type: 'task' })
+    expect(captured).toEqual({ id: 'c1' })
+    await captureHook.onSuccess()
+
+    const update = hooks.useUpdateEntry()
+    const updated = await update.mutationFn({ id: 'a1', payload: { title: 'Run 2' } })
+    expect(updated).toEqual({ id: 'a1' })
+    await update.onSuccess(updated)
+
+    const complete = hooks.useCompleteEntry()
+    const completed = await complete.mutationFn('a1')
+    expect(completed).toEqual({ id: 'a1' })
+    await complete.onSuccess(completed)
+
+    const remove = hooks.useDeleteEntry()
+    await remove.mutationFn('a1')
+    await remove.onSuccess(undefined, 'a1')
+
+    expect(navigate).toHaveBeenCalledWith('/almanac/a1')
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['almanac', 'list'] })
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['almanac', 'entry', 'a1'] })
   })
 })
