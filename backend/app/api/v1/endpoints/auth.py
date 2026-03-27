@@ -60,13 +60,14 @@ async def refresh(
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
 async def logout(
     request: Request,
-    db: Annotated[AsyncSession, Depends(get_db)],
+    response: Response,
+    db: AsyncSession = Depends(get_db),
 ) -> Response:
     raw_refresh_token = request.cookies.get("refresh_token")
     if raw_refresh_token:
         await auth_service.logout(raw_refresh_token, db)
         await db.commit()
-    response = Response(status_code=status.HTTP_204_NO_CONTENT)
+    response.status_code = status.HTTP_204_NO_CONTENT
     response.delete_cookie("refresh_token", path="/api/v1/auth")
     return response
 

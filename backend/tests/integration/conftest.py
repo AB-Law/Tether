@@ -13,7 +13,6 @@ from testcontainers.postgres import PostgresContainer
 
 from alembic import command
 
-os.environ.setdefault("APP_ENV", "test")
 os.environ.setdefault("APP_SECRET_KEY", "integration-test-secret")
 os.environ.setdefault("ANTHROPIC_API_KEY", "integration-test-anthropic")
 
