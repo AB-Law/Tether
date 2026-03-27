@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { NudgeCard } from '../features/reminders/components/NudgeCard'
 import { RemindersPage } from '../features/reminders/routes/RemindersPage'
+import type { ReminderApiItem } from '../features/reminders/types'
 
 const remindersMocks = vi.hoisted(() => ({
   useRemindersList: vi.fn(),
@@ -176,7 +177,7 @@ describe('reminders UI', () => {
           channel: 'in_app',
           scheduled_for: new Date().toISOString(),
           payload: { person_name: 'Fallback Person', nudge_text: 'Ping?' },
-        } as any,
+        } as unknown as ReminderApiItem,
       ],
       isLoading: false,
     })
