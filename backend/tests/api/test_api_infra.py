@@ -158,7 +158,7 @@ async def test_main_lifespan_covers_poller_shutdown(monkeypatch):
         def __await__(self):
             return _awaitable_task().__await__()
 
-    monkeypatch.setenv("PYTEST_CURRENT_TEST", "")
+    monkeypatch.setattr("app.main.os.getenv", lambda _key: "")
     ctx = lifespan(FastAPI())
     await ctx.__aenter__()
     await ctx.__aexit__(None, None, None)
@@ -170,7 +170,8 @@ async def test_main_lifespan_covers_poller_shutdown(monkeypatch):
         coro.close()
         return _Task()
 
-    monkeypatch.delenv("PYTEST_CURRENT_TEST", raising=False)
+    monkeypatch.setattr("app.main.os.getenv", lambda _key: None)
+    monkeypatch.setattr("app.main.settings.app_env", "development")
     monkeypatch.setattr("app.main.run_poll_loop", fake_poll_loop)
     monkeypatch.setattr("app.main.asyncio.create_task", fake_create_task)
     ctx_with_task = lifespan(FastAPI())
