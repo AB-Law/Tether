@@ -1,9 +1,11 @@
 import { Link } from 'react-router-dom'
 import { DailyPromptBanner } from '../components/DailyPromptBanner'
-import { useJournalList } from '../hooks/useJournal'
+import { WeeklyDigestCard } from '../components/WeeklyDigestCard'
+import { useJournalList, useLatestDigest } from '../hooks/useJournal'
 
 export function JournalListPage() {
   const { data, isLoading } = useJournalList({})
+  const { data: digestData, isLoading: isDigestLoading } = useLatestDigest()
   const streakBars = [
     { id: 'bar-1', filled: true },
     { id: 'bar-2', filled: true },
@@ -20,6 +22,12 @@ export function JournalListPage() {
         <h2 className="text-4xl font-extrabold leading-none tracking-tight text-slate-900">Your Journal</h2>
         <p className="text-xl font-medium text-slate-500">Good morning, Alex. Reflecting on your week so far.</p>
       </header>
+      <WeeklyDigestCard
+        digestText={digestData?.text}
+        generatedAt={digestData?.created_at ? new Date(digestData.created_at).toLocaleDateString() : undefined}
+        isEmpty={!isDigestLoading && !digestData}
+        isLoading={isDigestLoading}
+      />
       <div className="grid grid-cols-1 gap-4 md:grid-cols-[2.2fr_1fr]">
         <DailyPromptBanner />
         <div className="rounded-xl bg-blue-600 p-5 text-white shadow-md shadow-blue-600/30">

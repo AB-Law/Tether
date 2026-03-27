@@ -8,6 +8,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.exceptions import AppException
 from app.domain.ai.prompt_builders import build_reflection_prompt
 from app.repositories import journal_repository
+from app.services.ai_client import generate_text
+from app.services.ai_types import AIGenerationError
 
 DEFAULT_REFLECTION_TEXT = (
     "You seem to be noticing meaningful emotional patterns in this moment. "
@@ -15,37 +17,12 @@ DEFAULT_REFLECTION_TEXT = (
 )
 
 
-def _extract_text(result: object) -> str:
-    content = getattr(result, "content", None)
-    if isinstance(content, list):
-        chunks: list[str] = []
-        for item in content:
-            text = getattr(item, "text", None)
-            if isinstance(text, str):
-                chunks.append(text)
-        if chunks:
-            return "".join(chunks)
-    text = getattr(result, "text", None)
-    if isinstance(text, str):
-        return text
-    return DEFAULT_REFLECTION_TEXT
-
-
 def _generate_reflection(prompt: str) -> tuple[str, int | None, int | None]:
     try:
-        import anthropic  # type: ignore
-
-        client = anthropic.Anthropic()
-        result = client.messages.create(
-            model="claude-3-5-sonnet-latest",
-            max_tokens=800,
-            messages=[{"role": "user", "content": prompt}],
-        )
-        usage = getattr(result, "usage", None)
-        tokens_input = getattr(usage, "input_tokens", None)
-        tokens_output = getattr(usage, "output_tokens", None)
-        return _extract_text(result), tokens_input, tokens_output
-    except Exception:
+        result = generate_text(prompt, max_tokens=800)
+        text = result.text.strip() or DEFAULT_REFLECTION_TEXT
+        return text, result.tokens_input, result.tokens_output
+    except AIGenerationError:
         return DEFAULT_REFLECTION_TEXT, None, None
 
 

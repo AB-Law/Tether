@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user, get_db
 from app.core.exceptions import AppException
+from app.core.rate_limit import shared_reflection_rate_limit
 from app.models.user import User
 from app.repositories import journal_repository
 from app.schemas.journal import (
@@ -113,10 +114,12 @@ async def delete_entry(
 @router.get("/prompts/daily")
 async def get_daily_prompt(
     current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> dict[str, DailyPromptResponse]:
-    prompt = daily_prompt_service.get_daily_prompt(current_user.timezone)
+    prompt_data = await daily_prompt_service.get_daily_prompt(current_user, db)
+    await db.commit()
     return {
-        "data": DailyPromptResponse(prompt=prompt)
+        "data": DailyPromptResponse(**prompt_data)
     }
 
 
@@ -126,6 +129,7 @@ async def reflect_entry(
     payload: Annotated[ReflectRequest, Body()],
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
+    _: Annotated[None, Depends(shared_reflection_rate_limit())] = None,
 ) -> dict[str, ReflectResponse]:
     run = await journal_ai_service.trigger_reflection(entry_id, payload.mode, current_user.id, db)
     await db.commit()
@@ -146,6 +150,7 @@ async def stream_reflection(
     entry_id: UUID,
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
+    _: Annotated[None, Depends(shared_reflection_rate_limit())] = None,
     mode: Annotated[str, Query()] = "entry_plus_recent_context",
 ) -> StreamingResponse:
     async def event_stream() -> AsyncGenerator[str, None]:

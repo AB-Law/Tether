@@ -11,6 +11,7 @@ from app.api.router import api_router
 from app.core.config import settings
 from app.core.logging import configure_logging, get_logger
 from app.workers.reminder_jobs import run_poll_loop
+from app.workers.weekly_digest_jobs import run_digest_loop
 
 configure_logging()
 logger = get_logger(__name__)
@@ -20,13 +21,19 @@ logger = get_logger(__name__)
 async def lifespan(_: FastAPI):
     logger.info("Starting Tether API")
     reminder_task = None
+    digest_task = None
     if settings.app_env != "test" and os.getenv("PYTEST_CURRENT_TEST") is None:
         reminder_task = asyncio.create_task(run_poll_loop())
+        digest_task = asyncio.create_task(run_digest_loop())
     yield
     if reminder_task is not None:
         reminder_task.cancel()
         with suppress(asyncio.CancelledError):
             await reminder_task
+    if digest_task is not None:
+        digest_task.cancel()
+        with suppress(asyncio.CancelledError):
+            await digest_task
     logger.info("Stopping Tether API")
 
 

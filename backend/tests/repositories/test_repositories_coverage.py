@@ -154,6 +154,7 @@ async def test_repositories_models_rules_and_worker(monkeypatch):
     monkeypatch.setattr(reminder_jobs, "AsyncSessionLocal", lambda: Ctx())
     monkeypatch.setattr(reminder_jobs.reminder_repository, "get_due", AsyncMock(return_value=due))
     monkeypatch.setattr(reminder_jobs.reminder_repository, "mark_sent", AsyncMock())
+    monkeypatch.setattr(reminder_jobs.person_repository, "get_by_id", AsyncMock(return_value=None))
     await reminder_jobs.process_due_reminders()
     assert reminder_jobs.reminder_repository.mark_sent.await_count == 2  # type: ignore[attr-defined]
     async def failing_process():

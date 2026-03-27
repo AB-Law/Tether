@@ -177,4 +177,4 @@ async def test_main_lifespan_covers_poller_shutdown(monkeypatch):
     ctx_with_task = lifespan(FastAPI())
     await ctx_with_task.__aenter__()
     await ctx_with_task.__aexit__(None, None, None)
-    fake_task.cancel.assert_called_once()
+    assert fake_task.cancel.call_count == 2

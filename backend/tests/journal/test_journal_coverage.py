@@ -70,8 +70,11 @@ async def test_journal_and_tags_endpoints(monkeypatch):
     monkeypatch.setattr(journal.journal_service, "delete_entry", AsyncMock(return_value=None))
     await journal.delete_entry(eid, user, db)
 
-    monkeypatch.setattr(journal.daily_prompt_service, "get_daily_prompt", lambda _tz: "prompt")
-    assert (await journal.get_daily_prompt(user))["data"].prompt == "prompt"
+    async def _fake_daily_prompt(_user, _db):
+        return {"prompt": "prompt", "source": "ai"}
+
+    monkeypatch.setattr(journal.daily_prompt_service, "get_daily_prompt", _fake_daily_prompt)
+    assert (await journal.get_daily_prompt(user, db))["data"].prompt == "prompt"
 
     run = SimpleNamespace(
         id=uuid4(),
@@ -143,7 +146,7 @@ async def test_prompt_builders_and_daily_prompt():
     text = prompt_builders.build_reflection_prompt(entry, recent)
     assert "People tagged: Alex" in text
     assert "..." in text
-    assert daily_prompt_service.get_daily_prompt("UTC")
+    assert daily_prompt_service._static_prompt("UTC")
 
 
 @pytest.mark.asyncio
@@ -346,45 +349,30 @@ async def test_journal_ai_service_and_timeline(monkeypatch):
     )
     run = SimpleNamespace(id=uuid4(), status="running", response_text=None)
 
-    assert (
-        journal_ai_service._extract_text(
-            SimpleNamespace(content=[SimpleNamespace(text="a"), SimpleNamespace(text="b")])
-        )
-        == "ab"
+    monkeypatch.setattr(
+        journal_ai_service,
+        "generate_text",
+        lambda _prompt, max_tokens=800: SimpleNamespace(
+            text="ok", tokens_input=11, tokens_output=22
+        ),
     )
-    assert journal_ai_service._extract_text(SimpleNamespace(text="x")) == "x"
-    assert (
-        journal_ai_service._extract_text(SimpleNamespace())
-        == journal_ai_service.DEFAULT_REFLECTION_TEXT
-    )
-
-    class DummyMessages:
-        @staticmethod
-        def create(**_kwargs):
-            usage = SimpleNamespace(input_tokens=11, output_tokens=22)
-            return SimpleNamespace(content=[SimpleNamespace(text="ok")], usage=usage)
-
-    class DummyAnthropicClient:
-        def __init__(self):
-            self.messages = DummyMessages()
-
-    class DummyAnthropicModule:
-        pass
-
-    import sys
-
-    dummy_module = DummyAnthropicModule()
-    dummy_module.Anthropic = DummyAnthropicClient
-    monkeypatch.setitem(sys.modules, "anthropic", dummy_module)
     reflection_text, t_in, t_out = journal_ai_service._generate_reflection("prompt")
     assert reflection_text == "ok"
     assert t_in == 11
     assert t_out == 22
 
-    def raising_client():
-        raise RuntimeError("boom")
+    class _Err(Exception):
+        pass
 
-    monkeypatch.setitem(sys.modules, "anthropic", SimpleNamespace(Anthropic=raising_client))
+    monkeypatch.setattr(
+        journal_ai_service,
+        "generate_text",
+        lambda _prompt, max_tokens=800: (_ for _ in ()).throw(
+            journal_ai_service.AIGenerationError(
+                message="boom", retryable=True, provider="anthropic", model_name="m"
+            )
+        ),
+    )
     fallback_text, fallback_in, fallback_out = journal_ai_service._generate_reflection("prompt")
     assert fallback_text == journal_ai_service.DEFAULT_REFLECTION_TEXT
     assert fallback_in is None

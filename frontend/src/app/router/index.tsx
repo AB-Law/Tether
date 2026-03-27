@@ -11,7 +11,7 @@ import { LoginPage } from '../../features/auth/routes/LoginPage'
 import { PersonDetailPage } from '../../features/people/routes/PersonDetailPage'
 import { PersonFormPage } from '../../features/people/routes/PersonFormPage'
 import { PeopleListPage } from '../../features/people/routes/PeopleListPage'
-import { RoutePlaceholder } from '../../components/layout/route-placeholder'
+import { RemindersPage } from '../../features/reminders/routes/RemindersPage'
 import { AppShell } from '../../pages/app-shell'
 import { NotFoundPage } from '../../pages/not-found'
 
@@ -40,7 +40,7 @@ export const router = createBrowserRouter([
       { path: 'almanac', element: <AlmanacPage /> },
       { path: 'almanac/new', element: <AlmanacEditorPage /> },
       { path: 'almanac/:entryId', element: <AlmanacEntryPage /> },
-      { path: 'reminders', element: <RoutePlaceholder label="Reminders" /> },
+      { path: 'reminders', element: <RemindersPage /> },
     ],
   },
   {

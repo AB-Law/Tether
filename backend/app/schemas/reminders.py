@@ -16,6 +16,7 @@ class ReminderCreate(BaseModel):
 class ReminderUpdate(BaseModel):
     scheduled_for: datetime | None = None
     channel: str | None = None
+    status: str | None = None
 
 
 class ReminderSnoozeRequest(BaseModel):

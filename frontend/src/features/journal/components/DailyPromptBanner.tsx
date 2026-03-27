@@ -19,6 +19,11 @@ export function DailyPromptBanner() {
             </span>
             <span>Daily Prompt</span>
           </p>
+          {data.source === 'ai' ? (
+            <p className="mb-2 inline-flex rounded-full border border-blue-100 bg-blue-50/70 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-blue-700">
+              Personalised for you
+            </p>
+          ) : null}
           <p className="text-[29px] font-extrabold leading-tight tracking-tight text-slate-900">{data.prompt}</p>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
             Taking a moment to celebrate the small things helps build a positive narrative of your day-to-day life.
