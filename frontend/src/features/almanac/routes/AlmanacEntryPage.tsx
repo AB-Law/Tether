@@ -40,8 +40,10 @@ const emptyDraft: AlmanacEntryDraft = {
   is_completed: false,
 }
 
+const REMINDER_OFFSET_REGEX = /([+-]\d{2}:\d{2}|Z)$/
+
 function getReminderOffset(reminderAt: string): string {
-  const timezoneMatch = reminderAt.match(/([+-]\d{2}:\d{2}|Z)$/)
+  const timezoneMatch = REMINDER_OFFSET_REGEX.exec(reminderAt)
   return timezoneMatch?.[0] ?? 'Z'
 }
 

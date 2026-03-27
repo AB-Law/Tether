@@ -108,6 +108,7 @@ async def api_client(
     session_factory: async_sessionmaker[AsyncSession], clean_db: None
 ) -> AsyncGenerator[AsyncClient, None]:
     from app.api import deps
+    from app.api.v1.endpoints import health
     from app.main import app
 
     async def override_get_db() -> AsyncGenerator[AsyncSession, None]:
@@ -115,6 +116,7 @@ async def api_client(
             yield session
 
     app.dependency_overrides[deps.get_db] = override_get_db
+    app.dependency_overrides[health.get_db_session] = override_get_db
     try:
         async with AsyncClient(
             transport=ASGITransport(app=app),

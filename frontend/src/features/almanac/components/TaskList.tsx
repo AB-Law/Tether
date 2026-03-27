@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { type Dispatch, type SetStateAction, useMemo, useState } from 'react'
 
 import type { AlmanacEntry } from '../types'
 
@@ -17,6 +17,17 @@ function isOverdue(dueDate?: string | null) {
   return dueDate < today
 }
 
+function clearOptimisticEntry(
+  entryId: string,
+  setOptimisticCompleted: Dispatch<SetStateAction<Record<string, boolean>>>,
+) {
+  setOptimisticCompleted((prev) => {
+    const next = { ...prev }
+    delete next[entryId]
+    return next
+  })
+}
+
 export function TaskList({ entries, onComplete }: Readonly<TaskListProps>) {
   const [optimisticCompleted, setOptimisticCompleted] = useState<Record<string, boolean>>({})
   const completedIds = useMemo(() => {
@@ -32,6 +43,30 @@ export function TaskList({ entries, onComplete }: Readonly<TaskListProps>) {
   }, [entries, optimisticCompleted])
 
   const tasks = useMemo(() => entries.filter((entry) => entry.entry_type === 'task'), [entries])
+
+  const handleCompleteToggle = (taskId: string, completed: boolean) => {
+    const nextCompleted = !completed
+    setOptimisticCompleted((prev) => ({
+      ...prev,
+      [taskId]: nextCompleted,
+    }))
+
+    void onComplete(taskId, nextCompleted)
+      .then(() => {
+        setOptimisticCompleted((prev) => {
+          const current = prev[taskId]
+          if (current !== nextCompleted) {
+            return prev
+          }
+          const next = { ...prev }
+          delete next[taskId]
+          return next
+        })
+      })
+      .catch(() => {
+        clearOptimisticEntry(taskId, setOptimisticCompleted)
+      })
+  }
 
   return (
     <div className="space-y-3">
@@ -56,33 +91,7 @@ export function TaskList({ entries, onComplete }: Readonly<TaskListProps>) {
                   aria-label={`Mark ${task.title} completed`}
                   checked={completed}
                   className="mt-1 h-4 w-4 rounded border-slate-300 text-blue-600"
-                  onChange={() => {
-                    const nextCompleted = !completed
-                    setOptimisticCompleted((prev) => ({
-                      ...prev,
-                      [task.id]: nextCompleted,
-                    }))
-                    const request = onComplete(task.id, nextCompleted)
-                    void request
-                      .then(() => {
-                        setOptimisticCompleted((prev) => {
-                          const current = prev[task.id]
-                          if (current !== nextCompleted) {
-                            return prev
-                          }
-                          const next = { ...prev }
-                          delete next[task.id]
-                          return next
-                        })
-                      })
-                      .catch(() => {
-                        setOptimisticCompleted((prev) => {
-                          const next = { ...prev }
-                          delete next[task.id]
-                          return next
-                        })
-                      })
-                  }}
+                  onChange={() => handleCompleteToggle(task.id, completed)}
                   type="checkbox"
                 />
                 <span>
